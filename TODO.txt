@@ -1,0 +1,9 @@
+à faire :
+- importation modèles FBX, OBJ et glTF ( code )
+- drag & drop pour l'importation
+- ajout de texte 3D
+- liste d'objets basiques à proposer
+- design du panel
+- importer et appliquer texture sur texte et objet
+- exporter en glb
+- importer police

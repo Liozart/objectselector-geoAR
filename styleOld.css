@@ -1,0 +1,16 @@
+body {
+    margin: 0;
+}
+canvas {
+    width: 50%;
+    height: 100%;
+    float: right;
+    margin-right: 1%;
+    margin-top: 1%;
+    border: solid 1px #191919;
+}
+
+#panel {
+    float: left;
+    width: 45%;
+}

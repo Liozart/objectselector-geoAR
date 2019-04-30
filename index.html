@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <title>Object selector</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body>
+<div id="info">
+    <a href="javascript:control.setMode( 'translate' );">"W" translate</a> |
+    <a href="javascript:control.setMode( 'rotate' );">"E" rotate</a> |
+    <a href="javascript:control.setMode( 'scale' );">"R" scale</a> |
+    <a href="javascript:control.setSpace( control.space === 'local' ? 'world' : 'local' );">
+        "Q" toggle world/local space</a><br />
+    <a href="javascript:switchObjectControl();">"T" switch object control</a> |
+    Hold "Ctrl" down to snap to grid |
+    <a href="javascript:removeObject();">"X" remove</a>
+</div>
+<script src="js/three.js"></script>
+<script src="js/OrbitControls.js"></script>
+<script src="js/TransformControls.js"></script>
+<script src="js/GLTFLoader.js"></script>
+<script src="js/OBJLoader.js"></script>
+<script src="js/GeometryUtils.js"></script>
+
+<div id="panel" class="container">
+    <h3>Importer modèle</h3>
+    <input type="file" id="file">
+    <div id="drop_zone" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);"
+         ondragleave="dragLeaveHandler(event);">
+        <p id="dropText">Drag one or more files to this Drop Zone ...</p>
+    </div>
+
+    <h3>Ajouter forme</h3>
+    <button onclick="addCube();">Cube</button>
+    <button onclick="addPlane();">Plan</button><br/>
+
+    <h3>Ajouter texte</h3>
+    <label for="fonts">Police</label>
+    <select id="fonts" onchange="changeFont();">
+        <option value="helvetiker">helvetiker</option>
+        <option value="optimer">optimer</option>
+        <option value="gentilis">gentilis</option>
+        <option value="droid sans">droid sans</option>
+        <option value="droid serif">droid serif</option>
+    </select>
+    <input type="checkbox" id="fontWeight" onchange="changeFontWeight();"> Gras<br/>
+    <label for="textToAdd">Texte</label>
+    <input type="text" id="textToAdd">
+    <button onclick="addText();">Ajouter</button><br/>
+
+    <h5>Modifier couleur</h5>
+    <input type="color" id="objColor" name="objColor"
+           value="#00ff00" onchange="changeColor();">
+    <label for="objColor">Couleur</label>
+
+    <h5>Modifier transparence</h5>
+    0<input type="range" id="objOpacity" name="objAlpha" min="0" max="1" step="0.0001"
+           value="#00ff00" oninput="changeOpacity();">1
+    <label for="objOpacity">Opacité</label>
+</div>
+
+<script>
+    var camera, scene, renderer, control, orbit, light;
+    var objects = [];
+    var objects_count = 0;
+    var selected_object = null;
+    var font, fontName = "helvetiker", fontWeight = "regular" ;
+
+    init();
+    render();
+
+    /*
+     * Initalization function
+     */
+    function init() {
+        //Create renderer
+        renderer = new THREE.WebGLRenderer();
+        renderer.setPixelRatio( window.devicePixelRatio );
+        renderer.setSize( (window.innerWidth / 2), (window.innerHeight - 20) );
+        document.body.appendChild( renderer.domElement );
+
+        //Create scene
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color( 0xbfbfbf );
+        scene.add( new THREE.GridHelper( 1000, 10 ) );
+
+        //Create camera
+        camera = new THREE.PerspectiveCamera( 50, (window.innerWidth / 2) / (window.innerHeight - 20), 1, 5000 );
+        camera.position.set( 1000, 500, 1000 );
+        camera.lookAt( 0, 200, 0 );
+
+        //Create light
+        light = new THREE.DirectionalLight( 0xffffff, 2 );
+        light.position.set( 1, 1, 1 );
+        scene.add( light );
+
+        //Create space controls
+        orbit = new THREE.OrbitControls( camera, renderer.domElement );
+        orbit.update();
+        orbit.addEventListener( 'change', render );
+
+        //Create object controls
+        control = new THREE.TransformControls( camera, renderer.domElement );
+        control.addEventListener( 'change', render );
+        control.addEventListener( 'dragging-changed', function ( event ) {
+            orbit.enabled = ! event.value;
+        } );
+        scene.add( control );
+
+        //Object controls modes
+        window.addEventListener( 'keydown', function ( event ) {
+            switch ( event.keyCode ) {
+                case 81: // Q
+                    control.setSpace( control.space === "local" ? "world" : "local" );
+                    break;
+                case 17: // Ctrl
+                    control.setTranslationSnap( 20 );
+                    control.setRotationSnap( THREE.Math.degToRad( 15 ) );
+                    break;
+                case 87: // W
+                    control.setMode( "translate" );
+                    break;
+                case 69: // E
+                    control.setMode( "rotate" );
+                    break;
+                case 82: // R
+                    control.setMode( "scale" );
+                    break;
+                case 85: // T
+                    switchObjectControl();
+                    break;
+                case 88: // X
+                    removeObject();
+                    break;
+            }
+        } );
+        window.addEventListener( 'keyup', function ( event ) {
+            switch ( event.keyCode ) {
+                case 17: // Ctrl
+                    control.setTranslationSnap( null );
+                    control.setRotationSnap( null );
+                    break;
+            }
+        } );
+    }
+
+    /*
+     * Render function
+     */
+    function render() {
+        //requestAnimationFrame( render );
+        renderer.render( scene, camera );
+    }
+
+    /*
+     * Add a new cube to the scene
+     */
+    function addCube() {
+        var color = "0x" + ($("#objColor").val()).replace("#", "");
+        var geometry = new THREE.BoxGeometry(100, 100, 100);
+        var material = new THREE.MeshLambertMaterial( { color: 0xffffff,
+            transparent: true, opacity: 1.0} );
+        var cube = new THREE.Mesh( geometry, material );
+        cube.material.color.setHex(color);
+        cube.castShadow = true;
+        cube.receiveShadow = true;
+        objects[objects_count] = cube;
+        selected_object = objects_count;
+        objects_count++;
+        scene.add( cube );
+        control.attach( cube );
+    }
+
+    /*
+     * Add a new plane to the scene
+     */
+    function addPlane() {
+        var color = "0x" + ($("#objColor").val()).replace("#", "");
+        var geometry = new THREE.PlaneGeometry(100, 100);
+        var material = new THREE.MeshLambertMaterial( { color: 0xffffff, side: THREE.DoubleSide,
+            transparent: true, opacity: 1.0} );
+        var plane = new THREE.Mesh( geometry, material );
+        plane.material.color.setHex(color);
+        plane.castShadow = true;
+        plane.receiveShadow = true;
+        objects[objects_count] = plane;
+        selected_object = objects_count;
+        objects_count++;
+        scene.add( plane );
+        control.attach( plane );
+    }
+
+    /*
+     * Add a new text mesh to the scene
+     */
+    function addText() {
+
+        var loader = new THREE.FontLoader();
+        var geometry;
+        var materialFront = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
+        var materialSide = new THREE.MeshBasicMaterial( { color: 0x000088 } );
+        var materialArray = [ materialFront, materialSide ];
+
+        loader.load( 'fonts/helvetiker_regular.typeface.json', function ( font ) {
+
+            geometry = new THREE.TextGeometry( $("#textToAdd").val(), {
+                font: font,
+                size: 80,
+                height: 5,
+                curveSegments: 12,
+                bevelEnabled: true,
+                bevelThickness: 10,
+                bevelSize: 8,
+                bevelOffset: 0,
+                bevelSegments: 5
+            } );
+            var textMesh = new THREE.Mesh(geometry, materialArray );
+
+            //geometry.computeBoundingBox();
+            scene.add(textMesh);
+            render();
+        } );
+
+        // add 3D text
+        /*var materialFront = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
+        var materialSide = new THREE.MeshBasicMaterial( { color: 0x000088 } );
+        var materialArray = [ materialFront, materialSide ];
+
+        loadFont();
+
+        var textGeom = new THREE.TextGeometry( "Hello, World!",
+            {
+                size: 30, height: 4, curveSegments: 3,
+                font: font, weight: fontWeight, style: "normal",
+                bevelThickness: 1, bevelSize: 2, bevelEnabled: true,
+                material: 0, extrudeMaterial: 1
+            });
+        // font: helvetiker, gentilis, droid sans, droid serif, optimer
+        // weight: normal, bold
+
+        var textMaterial = new THREE.MeshFaceMaterial(materialArray);
+        var textMesh = new THREE.Mesh(textGeom, textMaterial );
+
+        textGeom.computeBoundingBox();
+        scene.add(textMesh);*/
+    }
+
+    /*
+     * Change selected font
+     */
+    function changeFont(){
+        fontName = $("#fonts").val();
+    }
+
+    /*
+     * Change selected font weight
+     */
+    function changeFontWeight(){
+        if ($("#fontWeight").is(":checked"))
+            fontWeight = "bold";
+        else fontWeight = "normal";
+    }
+
+    /*
+     * Switch transform control to the next object
+     */
+    function switchObjectControl(){
+        if (objects_count === 0) return;
+        if (selected_object === objects_count || selected_object === (objects_count - 1))
+            selected_object = 0;
+        else selected_object++;
+            control.attach(objects[selected_object]);
+    }
+
+    /*
+     * Remove current controlled object
+     */
+    function removeObject(){
+        scene.remove(objects[selected_object]);
+        objects.splice(selected_object, 1);
+        objects_count--;
+        if (objects_count === 0){
+            control.detach();
+            selected_object = null;
+        }
+        else {
+            selected_object = 0;
+            control.attach(objects[selected_object]);
+        }
+        render();
+    }
+
+    /*
+     * Change object's color
+     */
+    function changeColor(){
+        var color = "0x" + ($("#objColor").val()).replace("#", "");
+        if (selected_object !== null) {
+            objects[selected_object].material.color.setHex(color);
+            render();
+        }
+    }
+
+    /*
+     * Change object's opacity
+     */
+    function changeOpacity() {
+        var opacity = $("#objOpacity").val();
+        if (selected_object !== null) {
+            objects[selected_object].material.opacity = opacity;
+            render();
+        }
+    }
+
+    /*
+     * Drop file in zone
+     */
+    function dropHandler(ev) {
+        console.log('File(s) dropped');
+        $("#dropText").fadeIn(500);
+
+        // Prevent default behavior (Prevent file from being opened)
+        ev.preventDefault();
+
+        if (ev.dataTransfer.items) {
+            // Use DataTransferItemList interface to access the file(s)
+            for (var i = 0; i < ev.dataTransfer.items.length; i++) {
+                // If dropped items aren't files, reject them
+                if (ev.dataTransfer.items[i].kind === 'file') {
+                    var file = ev.dataTransfer.items[i].getAsFile();
+                    console.log('... file[' + i + '].name = ' + file.name);
+                }
+            }
+        } else {
+            // Use DataTransfer interface to access the file(s)
+            for (var i = 0; i < ev.dataTransfer.files.length; i++) {
+                console.log('... file[' + i + '].name = ' + ev.dataTransfer.files[i].name);
+            }
+        }
+    }
+
+    /*
+     * Prevent browser's default drop event
+     */
+    function dragOverHandler(ev) {
+        $("#dropText").fadeOut(500);
+
+        // Prevent default behavior (Prevent file from being opened)
+        ev.preventDefault();
+    }
+
+    /*
+     * Drag leave zone
+     */
+    function dragLeaveHandler(ev){
+        $("#dropText").fadeIn(500);
+    }
+
+    /*
+     * Windows resize event
+     */
+    window.addEventListener( 'resize', onWindowResize, false );
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        render();
+    }
+
+
+</script>
+<!-- Optional JavaScript -->
+<!-- jQuery first, then Popper.js, then Bootstrap JS -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+</body>
+</html>

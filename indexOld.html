@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="styleOld.css" type="text/css">
+    <title>Object selector</title>
+</head>
+<body>
+<script src="js/three.js"></script>
+<script src="js/DragControls.js"></script>
+<script src="js/TrackballControls.js"></script>
+<script src="js/GLTFLoader.js"></script>
+<script src="js/OBJLoader.js"></script>
+<script src="js/TransformControls.js"></script>
+<div id="panel" class="container">
+    <h3>Importer modèle</h3>
+    <input type="file" id="file">
+    <h3>Ajouter forme</h3>
+    <button onclick="addCube()">Cube</button>
+    <button onclick="addPlane()">Plan</button>
+    <button onclick="addCylinder()">Cylindre</button>
+</div>
+<script>
+    var objects = [];
+    var objects_count = 0;
+    var renderer;
+    var scene;
+    var camera;
+    var controls;
+    var lights;
+
+    init();
+
+    animate();
+
+    /*
+     * Scene initalization
+     */
+    function init(){
+        //Create scene
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color( 0xf0f0f0 );
+        camera = new THREE.PerspectiveCamera( 75, (window.innerWidth / 2) / (window.innerHeight - 20), 0.1, 1000 );
+
+        //Create renderer
+        renderer = new THREE.WebGLRenderer();
+        renderer.setSize( (window.innerWidth / 2), (window.innerHeight - 20));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFShadowMap;
+        document.body.appendChild( renderer.domElement );
+
+        //Create light
+        scene.add( new THREE.AmbientLight( 0x505050 ) );
+        var light = new THREE.SpotLight( 0xffffff, 1.5 );
+        light.position.set( 0, 500, 2000 );
+        light.angle = Math.PI / 9;
+        light.castShadow = true;
+        light.shadow.camera.near = 1000;
+        light.shadow.camera.far = 4000;
+        light.shadow.mapSize.width = 1024;
+        light.shadow.mapSize.height = 1024;
+        scene.add( light );
+
+        //Create controls
+        controls = new THREE.TrackballControls( camera );
+        controls.rotateSpeed = 1.0;
+        controls.zoomSpeed = 1.2;
+        controls.panSpeed = 0.8;
+        controls.noZoom = false;
+        controls.noPan = false;
+        controls.staticMoving = true;
+        controls.dynamicDampingFactor = 0.3;
+
+        //Create object controls
+        var dragControls = new THREE.DragControls( objects, camera, renderer.domElement );
+        dragControls.addEventListener( 'dragstart', function () {
+            controls.enabled = false;
+        } );
+        dragControls.addEventListener( 'dragend', function () {
+            controls.enabled = true;
+        } );
+
+        transformControl = new THREE.TransformControls( camera, renderer.domElement );
+        transformControl.addEventListener( 'change', renderer );
+        transformControl.addEventListener( 'dragging-changed', function ( event ) {
+            controls.enabled = ! event.value;
+        } );
+
+        window.addEventListener( 'resize', onWindowResize, false );
+
+        //Create grounds
+        var geometry = new THREE.PlaneGeometry( 50, 50, 4, 4);
+        var material = new THREE.MeshLambertMaterial( {color: 0x000000, side: THREE.DoubleSide, wireframe: true} );
+        var plane = new THREE.Mesh( geometry, material );
+        plane.receiveShadow = true;
+        scene.add( plane );
+        plane.position.z -= 10;
+
+        //Place camera correctly
+        camera.position.z = 5;
+        camera.position.y -= 5;
+        controls.update();
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize( window.innerWidth, window.innerHeight );
+    }
+
+    /*
+     * Scene animation
+     */
+    function animate() {
+        requestAnimationFrame( animate );
+        controls.update();
+        renderer.render( scene, camera );
+    }
+
+    function addCube() {
+        var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+        var material = new THREE.MeshLambertMaterial( { color: 0x00ff00} );
+        var cube = new THREE.Mesh( geometry, material );
+        cube.castShadow = true;
+        cube.receiveShadow = true;
+        objects[objects_count] = cube;
+        objects_count++;
+        scene.add( cube );
+        transformControl.attach(cube);
+        scene.add(transformControl);
+    }
+
+    function addPlane() {
+        var geometry = new THREE.PlaneGeometry( 1, 1);
+        var material = new THREE.MeshLambertMaterial( { color: 0x00ff00, side: THREE.DoubleSide} );
+        var plane = new THREE.Mesh( geometry, material );
+        plane.castShadow = true;
+        plane.receiveShadow = true;
+        objects[objects_count] = plane;
+        objects_count++;
+        scene.add( plane );
+        transformControl.attach(plane);
+    }
+
+    //Object load
+    // manager
+    function loadModel() {
+        object.traverse( function ( child ) {
+            if ( child.isMesh ) child.material.map = texture;
+        } );
+        objects[objects_count] = object;
+        objects_count++;
+        scene.add( object );
+    }
+    var manager = new THREE.LoadingManager( loadModel );
+
+    // loader
+    var loader = new THREE.OBJLoader( manager );
+    loader.load( '3dObjects/chair/chair.obj', function ( obj ) {
+        object = obj;
+    }, onError );
+
+    // texture
+    var textureLoader = new THREE.TextureLoader( manager );
+    var texture = textureLoader.load( '3dObjects/chair/chair.jpg' );
+
+    // error
+    function onError() {}
+
+</script>
+<!-- Optional JavaScript -->
+<!-- jQuery first, then Popper.js, then Bootstrap JS -->
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+</body>
+</html>
