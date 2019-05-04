@@ -27,30 +27,17 @@
 <script src="js/GeometryUtils.js"></script>
 
 <div id="panel" class="container">
-    <h3>Importer modèle</h3>
-    <input type="file" id="file">
-    <div id="drop_zone" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);"
+
+    <h3>Importer modèle FBX, OBJ ou glTF</h3>
+    <div id="dropZone" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);"
          ondragleave="dragLeaveHandler(event);">
-        <p id="dropText">Drag one or more files to this Drop Zone ...</p>
+        <p id="dropText">Glissez et déposez les fichiers ici (Modèle et textures)</p>
     </div>
+
 
     <h3>Ajouter forme</h3>
     <button onclick="addCube();">Cube</button>
     <button onclick="addPlane();">Plan</button><br/>
-
-    <h3>Ajouter texte</h3>
-    <label for="fonts">Police</label>
-    <select id="fonts" onchange="changeFont();">
-        <option value="helvetiker">helvetiker</option>
-        <option value="optimer">optimer</option>
-        <option value="gentilis">gentilis</option>
-        <option value="droid sans">droid sans</option>
-        <option value="droid serif">droid serif</option>
-    </select>
-    <input type="checkbox" id="fontWeight" onchange="changeFontWeight();"> Gras<br/>
-    <label for="textToAdd">Texte</label>
-    <input type="text" id="textToAdd">
-    <button onclick="addText();">Ajouter</button><br/>
 
     <h5>Modifier couleur</h5>
     <input type="color" id="objColor" name="objColor"
@@ -59,8 +46,28 @@
 
     <h5>Modifier transparence</h5>
     0<input type="range" id="objOpacity" name="objAlpha" min="0" max="1" step="0.0001"
-           value="#00ff00" oninput="changeOpacity();">1
+            value="#00ff00" oninput="changeOpacity();">1
     <label for="objOpacity">Opacité</label>
+
+    <h3>Ajouter texte</h3>
+    <label for="fonts">Police</label>
+    <select id="fonts" onchange="changeFont();">
+        <option value="helvetiker">helvetiker</option>
+        <option value="optimer">optimer</option>
+        <option value="gentilis">gentilis</option>
+        <option value="droid_sans">droid sans</option>
+        <option value="droid_serif">droid serif</option>
+    </select>
+    <input type="checkbox" id="fontWeight" onchange="changeFontWeight();"> Gras<br/>
+    <label for="textToAdd">Texte</label>
+    <input type="text" id="textToAdd">
+    <button onclick="addText();">Ajouter</button><br/>
+    <input type="color" id="textColor" name="objColor"
+           value="#ff0000">
+    <label for="textColor">Couleur</label>
+    <input type="color" id="textColorOut" name="objColor"
+           value="#0000ff">
+    <label for="textColorOut">Couleur contours</label>
 </div>
 
 <script>
@@ -68,7 +75,10 @@
     var objects = [];
     var objects_count = 0;
     var selected_object = null;
-    var font, fontName = "helvetiker", fontWeight = "regular" ;
+    var fontName = "helvetiker", fontWeight = "regular" ;
+    var lastUploadedObjectName = null;
+
+    const storageURL = "storeFile.php";
 
     init();
     render();
@@ -160,12 +170,12 @@
      * Add a new cube to the scene
      */
     function addCube() {
-        var color = "0x" + ($("#objColor").val()).replace("#", "");
+        var color = new THREE.Color();
+        color.setHex("0x" + ($("#objColor").val()).replace("#", ""));
         var geometry = new THREE.BoxGeometry(100, 100, 100);
-        var material = new THREE.MeshLambertMaterial( { color: 0xffffff,
+        var material = new THREE.MeshLambertMaterial( { color: color,
             transparent: true, opacity: 1.0} );
         var cube = new THREE.Mesh( geometry, material );
-        cube.material.color.setHex(color);
         cube.castShadow = true;
         cube.receiveShadow = true;
         objects[objects_count] = cube;
@@ -173,18 +183,19 @@
         objects_count++;
         scene.add( cube );
         control.attach( cube );
+        render();
     }
 
     /*
      * Add a new plane to the scene
      */
     function addPlane() {
-        var color = "0x" + ($("#objColor").val()).replace("#", "");
+        var color = new THREE.Color();
+        color.setHex("0x" + ($("#objColor").val()).replace("#", ""));
         var geometry = new THREE.PlaneGeometry(100, 100);
-        var material = new THREE.MeshLambertMaterial( { color: 0xffffff, side: THREE.DoubleSide,
+        var material = new THREE.MeshLambertMaterial( { color: color, side: THREE.DoubleSide,
             transparent: true, opacity: 1.0} );
         var plane = new THREE.Mesh( geometry, material );
-        plane.material.color.setHex(color);
         plane.castShadow = true;
         plane.receiveShadow = true;
         objects[objects_count] = plane;
@@ -192,22 +203,25 @@
         objects_count++;
         scene.add( plane );
         control.attach( plane );
+        render();
     }
 
     /*
      * Add a new text mesh to the scene
      */
     function addText() {
+        var colorText = new THREE.Color();
+        colorText.setHex("0x" + ($("#textColor").val()).replace("#", ""));
+        var colorTextOut = new THREE.Color();
+        colorTextOut.setHex("0x" + ($("#textColorOut").val()).replace("#", ""));
 
         var loader = new THREE.FontLoader();
-        var geometry;
-        var materialFront = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
-        var materialSide = new THREE.MeshBasicMaterial( { color: 0x000088 } );
+        var materialFront = new THREE.MeshBasicMaterial( { color: colorText } );
+        var materialSide = new THREE.MeshBasicMaterial( { color: colorTextOut } );
         var materialArray = [ materialFront, materialSide ];
 
-        loader.load( 'fonts/helvetiker_regular.typeface.json', function ( font ) {
-
-            geometry = new THREE.TextGeometry( $("#textToAdd").val(), {
+        loader.load( "fonts/" + fontName + "_" + fontWeight + ".typeface.json", function ( font ) {
+            var geometry = new THREE.TextGeometry( $("#textToAdd").val(), {
                 font: font,
                 size: 80,
                 height: 5,
@@ -221,32 +235,13 @@
             var textMesh = new THREE.Mesh(geometry, materialArray );
 
             //geometry.computeBoundingBox();
+            objects[objects_count] = textMesh;
+            selected_object = objects_count;
+            objects_count++;
             scene.add(textMesh);
+            control.attach( textMesh );
             render();
         } );
-
-        // add 3D text
-        /*var materialFront = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
-        var materialSide = new THREE.MeshBasicMaterial( { color: 0x000088 } );
-        var materialArray = [ materialFront, materialSide ];
-
-        loadFont();
-
-        var textGeom = new THREE.TextGeometry( "Hello, World!",
-            {
-                size: 30, height: 4, curveSegments: 3,
-                font: font, weight: fontWeight, style: "normal",
-                bevelThickness: 1, bevelSize: 2, bevelEnabled: true,
-                material: 0, extrudeMaterial: 1
-            });
-        // font: helvetiker, gentilis, droid sans, droid serif, optimer
-        // weight: normal, bold
-
-        var textMaterial = new THREE.MeshFaceMaterial(materialArray);
-        var textMesh = new THREE.Mesh(textGeom, textMaterial );
-
-        textGeom.computeBoundingBox();
-        scene.add(textMesh);*/
     }
 
     /*
@@ -262,7 +257,7 @@
     function changeFontWeight(){
         if ($("#fontWeight").is(":checked"))
             fontWeight = "bold";
-        else fontWeight = "normal";
+        else fontWeight = "regular";
     }
 
     /*
@@ -320,25 +315,156 @@
      * Drop file in zone
      */
     function dropHandler(ev) {
-        console.log('File(s) dropped');
         $("#dropText").fadeIn(500);
-
-        // Prevent default behavior (Prevent file from being opened)
+        //Prevent default behavior (Prevent file from being opened)
         ev.preventDefault();
-
         if (ev.dataTransfer.items) {
-            // Use DataTransferItemList interface to access the file(s)
+            //Use DataTransferItemList interface to access the file(s)
             for (var i = 0; i < ev.dataTransfer.items.length; i++) {
-                // If dropped items aren't files, reject them
-                if (ev.dataTransfer.items[i].kind === 'file') {
-                    var file = ev.dataTransfer.items[i].getAsFile();
-                    console.log('... file[' + i + '].name = ' + file.name);
+                //If dropped items aren't files, reject them
+                if (ev.dataTransfer.items[i].kind !== 'file') {
+                    showPopupForMilliSeconds("dropZone", "Not a file", 4000);
+                    return;
                 }
             }
-        } else {
+            //showPopupForMilliSeconds("dropZone", "File(s) are uploading...", 4000);
+            $("#dropZone").popover({"content" : "File(s) are uploading...", "trigger" : "manual"});
+            $("#dropZone").popover('show');
+            //Upload files on server and load the object in the scene
+            uploadFilesOnServerAndLoad(ev.dataTransfer.items);
+        }
+        /*else {
             // Use DataTransfer interface to access the file(s)
             for (var i = 0; i < ev.dataTransfer.files.length; i++) {
                 console.log('... file[' + i + '].name = ' + ev.dataTransfer.files[i].name);
+            }
+        }*/
+    }
+
+    /*
+     * Upload the dropped files on the server in the temp folder
+     * by calling the php script
+     */
+    function uploadFilesOnServerAndLoad(files) {
+        var fdata = new FormData();
+        var format;
+        for (var i = 0; i < files.length; i++){
+            var f = files[i].getAsFile();
+            fdata.append("files[]", f);
+        }
+        //Get object format and name
+        format = getDroppedFilesFormat(files);
+        lastUploadedObjectName = getDroppedFilesName(files);
+
+        fdata.append("folder", lastUploadedObjectName);
+        fetch(storageURL, {
+            method: 'POST',
+            body: fdata,
+        }).then(response => {
+            $("#dropZone").popover('dispose');
+            $("#dropZone").popover({"content" : "File(s) uploaded. Adding object to scene...", "trigger" : "manual"});
+            $("#dropZone").popover('show');
+            //showPopupForMilliSeconds("dropZone", "File(s) uploaded. Adding object to scene...", 4000);
+            //Load model into scene when uploaded
+            switch (format) {
+                case "fbx":
+                    break;
+                case "obj": //LoadOBJObject();
+                    break;
+                case "gltf": //LoadGLTFObject();
+                    break;
+            }
+        });
+    }
+
+    /*
+     * Load an glTF object to the scene
+     */
+    function LoadGLTFObject(files){
+        var modelFile;
+        //Get gltf file
+        for (var i = 0; i < files.length; i++) {
+            if (files[i].getAsFile().name.includes("glb") || files[i].getAsFile().name.includes("gltf"))
+                modelFile = files[i].getAsFile();
+        }
+        // Instantiate a loader
+        var loader = new THREE.GLTFLoader();
+        // Load a glTF resource
+        loader.load(
+            // resource URL
+            modelFile,
+            // called when the resource is loaded
+            function ( gltf ) {
+                scene.add( gltf.scene );
+            },
+            // called while loading is progressing
+            function ( xhr ) {
+                console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+
+            },
+            // called when loading has errors
+            function ( error ) {
+                showPopupForMilliSeconds("dropZone", "Error :" + error, 4000);
+            }
+        );
+    }
+
+    /*
+     * Load an OBJ object to the scene
+     */
+    function LoadOBJObject(files) {
+        function loadModel() {
+            object.traverse(function (child) {
+                if (child.isMesh) child.material.map = texture;
+            });
+            objects[objects_count] = object;
+            objects_count++;
+            scene.add(object);
+        }
+
+        var manager = new THREE.LoadingManager(loadModel);
+
+        // loader
+        var loader = new THREE.OBJLoader(manager);
+        loader.load('3dObjects/chair/chair.obj', function (obj) {
+            object = obj;
+        }, onError);
+
+        // texture
+        var textureLoader = new THREE.TextureLoader(manager);
+        var texture = textureLoader.load('3dObjects/chair/chair.jpg');
+
+        // error
+        function onError() {
+        }
+    }
+
+    /*
+     * Returns the dropped object's format
+     */
+    function getDroppedFilesFormat(files){
+        for (var i = 0; i < files.length; i++){
+            var f = files[i].getAsFile().name.toLowerCase();
+            if (f.includes("fbx"))
+                return "fbx";
+            else if (f.includes("obj"))
+                return "obj";
+            else if (f.includes("glb") || f.includes("gltf"))
+                return "gltf";
+            return null;
+        }
+    }
+
+    /*
+     * Returns the file's name of the object
+     */
+    function getDroppedFilesName(files){
+        for (var i = 0; i < files.length; i++){
+            var f = files[i].getAsFile().name.toLowerCase();
+            if (f.includes("fbx") || f.includes("obj") ||
+                f.includes("glb") || f.includes("gltf")){
+                var arr = f.split(".");
+                return arr[0];
             }
         }
     }
@@ -361,6 +487,19 @@
     }
 
     /*
+     * Create and show a popover for a selected time
+     */
+    function showPopupForMilliSeconds(zone, text, time){
+        $("#" + zone).popover({"content" : text, "trigger" : "manual"});
+        $("#" + zone).popover('show');
+        window.setTimeout(hidePopover, time);
+
+        function hidePopover() {
+            $("#" + zone).popover('hide');
+        }
+    }
+
+    /*
      * Windows resize event
      */
     window.addEventListener( 'resize', onWindowResize, false );
@@ -370,7 +509,6 @@
         renderer.setSize( window.innerWidth, window.innerHeight );
         render();
     }
-
 
 </script>
 <!-- Optional JavaScript -->

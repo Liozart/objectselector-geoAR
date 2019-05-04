@@ -1,9 +1,21 @@
 à faire :
 - importation modèles FBX, OBJ et glTF ( code )
-- drag & drop pour l'importation
-- ajout de texte 3D
-- liste d'objets basiques à proposer
-- design du panel
-- importer et appliquer texture sur texte et objet
-- exporter en glb
+- importer et appliquer texture sur texte et objet (répéter texture ou non)
 - importer police
+- liste d'objets basiques à proposer
+- exporter en glb
+- plus de propriétés modifiables par objet (texte : weight, bevel)
+- design du panel ( faire pop les propriétés de l'objet sélectionné (couleur, opcaité..))
+- hiérarchie pour plusieurs objets
+
+rapport :
+- but du projet
+- architecture globale
+- recherche des technolgies
+--- objectselector ---
+- structure du projet
+- technologies utilisées
+    - three.js
+    - php
+- fonctionnalités du projet
+- implémentation
