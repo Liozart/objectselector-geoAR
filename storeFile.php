@@ -23,6 +23,7 @@ if (isset($_FILES['files']))
 	$errors = [];
 	$path = '3dObjects/temp/' . $_POST['folder'] . '/';
 	mkdir($path);
+	chmod($path, 0777);
 
 	$all_files = count($_FILES['files']['tmp_name']);
 

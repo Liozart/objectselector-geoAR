@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-    <link rel="stylesheet" href="style.css" type="text/css">
+    <link rel="stylesheet" href="style/style.css" type="text/css">
 </head>
 <body>
 <div id="info">
@@ -24,16 +24,21 @@
 <script src="js/TransformControls.js"></script>
 <script src="js/GLTFLoader.js"></script>
 <script src="js/OBJLoader.js"></script>
+<script src="js/FBXLoader.js"></script>
 <script src="js/GeometryUtils.js"></script>
+<script src="js/inflate.min.js"></script>
 
 <div id="panel" class="container">
-
-    <h3>Importer modèle FBX, OBJ ou glTF</h3>
+    <h3>
+        Importer FBX, OBJ ou glTF/glb
+        <button id="importWarningButton" type="button" class="btn btn-warning btn-sm" onclick="toggleImportWarningPopover();">
+            Warning
+        </button>
+    </h3>
     <div id="dropZone" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);"
          ondragleave="dragLeaveHandler(event);">
         <p id="dropText">Glissez et déposez les fichiers ici (Modèle et textures)</p>
     </div>
-
 
     <h3>Ajouter forme</h3>
     <button onclick="addCube();">Cube</button>
@@ -45,7 +50,7 @@
     <label for="objColor">Couleur</label>
 
     <h5>Modifier transparence</h5>
-    0<input type="range" id="objOpacity" name="objAlpha" min="0" max="1" step="0.0001"
+    0<input type="range" id="objOpacity" min="0" max="1" step="0.0001"
             value="#00ff00" oninput="changeOpacity();">1
     <label for="objOpacity">Opacité</label>
 
@@ -79,6 +84,7 @@
     var lastUploadedObjectName = null;
 
     const storageURL = "storeFile.php";
+    const removeURL = "removeFile.php";
 
     init();
     render();
@@ -92,6 +98,9 @@
         renderer.setPixelRatio( window.devicePixelRatio );
         renderer.setSize( (window.innerWidth / 2), (window.innerHeight - 20) );
         document.body.appendChild( renderer.domElement );
+        //settings for gltf loading
+        //renderer.gammaOutput = true;
+        //renderer.gammaFactor = 2.2;
 
         //Create scene
         scene = new THREE.Scene();
@@ -322,23 +331,22 @@
             //Use DataTransferItemList interface to access the file(s)
             for (var i = 0; i < ev.dataTransfer.items.length; i++) {
                 //If dropped items aren't files, reject them
+                if (ev.dataTransfer.items[i].webkitGetAsEntry().isDirectory) {
+                    showPopupForMilliSeconds("dropZone", "Veuillez mettre uniquement des fichiers.", 4000);
+                    return;
+                }
                 if (ev.dataTransfer.items[i].kind !== 'file') {
-                    showPopupForMilliSeconds("dropZone", "Not a file", 4000);
+                    showPopupForMilliSeconds("dropZone", "Veuillez mettre uniquement des fichiers.", 4000);
                     return;
                 }
             }
+
             //showPopupForMilliSeconds("dropZone", "File(s) are uploading...", 4000);
-            $("#dropZone").popover({"content" : "File(s) are uploading...", "trigger" : "manual"});
+            $("#dropZone").popover({"content" : "Uploading du fichier..", "trigger" : "manual"});
             $("#dropZone").popover('show');
             //Upload files on server and load the object in the scene
             uploadFilesOnServerAndLoad(ev.dataTransfer.items);
         }
-        /*else {
-            // Use DataTransfer interface to access the file(s)
-            for (var i = 0; i < ev.dataTransfer.files.length; i++) {
-                console.log('... file[' + i + '].name = ' + ev.dataTransfer.files[i].name);
-            }
-        }*/
     }
 
     /*
@@ -354,48 +362,88 @@
         }
         //Get object format and name
         format = getDroppedFilesFormat(files);
-        lastUploadedObjectName = getDroppedFilesName(files);
-
-        fdata.append("folder", lastUploadedObjectName);
+        lastUploadedObjectName = getDroppedFilesObjectName(files);
+        fdata.append("folder", lastUploadedObjectName.split(".")[0]);
         fetch(storageURL, {
             method: 'POST',
             body: fdata,
         }).then(response => {
-            $("#dropZone").popover('dispose');
-            $("#dropZone").popover({"content" : "File(s) uploaded. Adding object to scene...", "trigger" : "manual"});
-            $("#dropZone").popover('show');
-            //showPopupForMilliSeconds("dropZone", "File(s) uploaded. Adding object to scene...", 4000);
-            //Load model into scene when uploaded
-            switch (format) {
-                case "fbx":
-                    break;
-                case "obj": //LoadOBJObject();
-                    break;
-                case "gltf": //LoadGLTFObject();
-                    break;
+            if (response.ok){
+                $("#dropZone").popover('dispose');
+                showPopupForMilliSeconds("dropZone", "Fichier uploadé. Chargement de l'objet..", 3000);
+                //Load model into scene when uploaded
+                switch (format) {
+                    case "fbx": LoadFBXObject();
+                        break;
+                    case "obj": //LoadOBJObject();
+                        break;
+                    case "gltf": LoadGLTFObject();
+                        break;
+                }
+            }
+            else {
+                $("#dropZone").popover('dispose');
+                showPopupForMilliSeconds("dropZone", "Erreur lors de l'upload", 4000);
             }
         });
     }
 
     /*
-     * Load an glTF object to the scene
+     * Load the uploaded FBX object to the scene
      */
-    function LoadGLTFObject(files){
-        var modelFile;
-        //Get gltf file
-        for (var i = 0; i < files.length; i++) {
-            if (files[i].getAsFile().name.includes("glb") || files[i].getAsFile().name.includes("gltf"))
-                modelFile = files[i].getAsFile();
-        }
-        // Instantiate a loader
-        var loader = new THREE.GLTFLoader();
+    function LoadFBXObject() {
+        // model
+        var loader = new THREE.FBXLoader();
+        console.log("loader");
+        loader.load('3dObjects/temp/' + lastUploadedObjectName.split(".")[0] + '/' + lastUploadedObjectName,
+            function (object){
+            /*object.traverse( function ( child ) {
+                if ( child.isMesh ) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            } );*/
+            console.log("Loaded");
+            objects[objects_count] = object;
+            objects_count++;
+            scene.add( object );
+            control.attach(object);
+            object.scale.set(10, 10, 10,);
+            //Remove files when object is on scene
+            removeTempFolder();
+            render();
+        },
+        function ( error ) {
+            $("#dropZone").popover('dispose');
+            showPopupForMilliSeconds("dropZone", "Erreur lors du chargement :" + error, 10000);
+            console.log(error);
+        });
+    }
+
+    /*
+     * Load the uploaded glTF object to the scene
+     */
+    function LoadGLTFObject(){
+        // Instantiate a loader and set path to temp folder
+        var loader = new THREE.GLTFLoader().setPath( '3dObjects/temp/' + lastUploadedObjectName.split(".")[0] + '/');
+        console.log("Path set");
         // Load a glTF resource
-        loader.load(
-            // resource URL
-            modelFile,
-            // called when the resource is loaded
-            function ( gltf ) {
+        loader.load( lastUploadedObjectName, function ( gltf ) {
+                gltf.scene.traverse( function ( child ) {
+                    if ( child.isMesh ) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                } );
+                console.log("Loaded");
+                objects[objects_count] = gltf.scene;
+                objects_count++;
                 scene.add( gltf.scene );
+                control.attach(gltf.scene);
+                gltf.scene.scale.set(10, 10, 10,);
+                //Remove files when object is on scene
+                removeTempFolder();
+                render();
             },
             // called while loading is progressing
             function ( xhr ) {
@@ -404,39 +452,37 @@
             },
             // called when loading has errors
             function ( error ) {
-                showPopupForMilliSeconds("dropZone", "Error :" + error, 4000);
+                $("#dropZone").popover('dispose');
+                showPopupForMilliSeconds("dropZone", "Erreur lors du chargement :" + error, 10000);
             }
         );
     }
 
     /*
-     * Load an OBJ object to the scene
+     * Load the uploaded OBJ object to the scene
      */
-    function LoadOBJObject(files) {
-        function loadModel() {
-            object.traverse(function (child) {
-                if (child.isMesh) child.material.map = texture;
+    function LoadOBJObject() {
+        var mtlLoader = new THREE.MTLLoader();
+        mtlLoader.setTexturePath('3dObjects/temp/' + lastUploadedObjectName.split(".")[0] + '/');
+        mtlLoader.setPath('3dObjects/temp/' + lastUploadedObjectName.split(".")[0] + '/');
+        mtlLoader.load(lastUploadedObjectName.split(".")[0] + '.mtl', function (materials) {
+            materials.preload();
+            var objLoader = new THREE.OBJLoader();
+            objLoader.setMaterials(materials);
+            objLoader.setPath('3dObjects/temp/' + lastUploadedObjectName.split(".")[0] + '/');
+            objLoader.load(lastUploadedObjectName, function (object) {
+                objects[objects_count] = object;
+                objects_count++;
+                scene.add(object);
+                object.scale.set(10, 10, 10,);
+                //Remove files when object is on scene
+                removeTempFolder();
+                render();
+            }, function error() {
+                $("#dropZone").popover('dispose');
+                showPopupForMilliSeconds("dropZone", "Erreur lors du chargement :" + error, 10000);
             });
-            objects[objects_count] = object;
-            objects_count++;
-            scene.add(object);
-        }
-
-        var manager = new THREE.LoadingManager(loadModel);
-
-        // loader
-        var loader = new THREE.OBJLoader(manager);
-        loader.load('3dObjects/chair/chair.obj', function (obj) {
-            object = obj;
-        }, onError);
-
-        // texture
-        var textureLoader = new THREE.TextureLoader(manager);
-        var texture = textureLoader.load('3dObjects/chair/chair.jpg');
-
-        // error
-        function onError() {
-        }
+        });
     }
 
     /*
@@ -445,11 +491,11 @@
     function getDroppedFilesFormat(files){
         for (var i = 0; i < files.length; i++){
             var f = files[i].getAsFile().name.toLowerCase();
-            if (f.includes("fbx"))
+            if (f.includes(".fbx"))
                 return "fbx";
-            else if (f.includes("obj"))
+            else if (f.includes(".obj"))
                 return "obj";
-            else if (f.includes("glb") || f.includes("gltf"))
+            else if (f.includes(".glb") || f.includes(".gltf"))
                 return "gltf";
             return null;
         }
@@ -458,15 +504,31 @@
     /*
      * Returns the file's name of the object
      */
-    function getDroppedFilesName(files){
+    function getDroppedFilesObjectName(files){
         for (var i = 0; i < files.length; i++){
             var f = files[i].getAsFile().name.toLowerCase();
-            if (f.includes("fbx") || f.includes("obj") ||
-                f.includes("glb") || f.includes("gltf")){
-                var arr = f.split(".");
-                return arr[0];
+            if (f.includes(".fbx") || f.includes(".obj") ||
+                f.includes(".glb") || f.includes(".gltf")){
+                return f;
             }
         }
+    }
+
+    /*
+     * Remove the temp folder containing loaded object
+     */
+    function removeTempFolder(){
+        var fdata = new FormData();
+        fdata.append("folder", lastUploadedObjectName.split(".")[0]);
+        fetch(removeURL, {
+            method: 'POST',
+            body: fdata,
+        }).then(response => {
+            if (!response.ok){
+                $("#dropZone").popover('dispose');
+                showPopupForMilliSeconds("dropZone", "Erreur lors de l'effacement du fichier temp", 4000);
+            }
+        });
     }
 
     /*
@@ -497,6 +559,19 @@
         function hidePopover() {
             $("#" + zone).popover('hide');
         }
+    }
+
+    /*
+     * Toogle the popover of the import instructions
+     */
+    function toggleImportWarningPopover(){
+        //$('#importWarningButton').popover('dispose');
+        var text = 'Les dossiers ne sont pas supportés, ne placez que des fichiers. ' +
+            'Si besoin, modifier les fichiers .gltf ou .mtl pour supprimer le chemin vers les textures et ne garder ' +
+            'que les noms des textures. L\'éventuel fichier .mtl doit être nommé avec le même nom que le fichier .obj.';
+        showPopupForMilliSeconds("importWarningButton", text, 6000);
+        //$("#importWarningButton").popover({"content" : text, "trigger" : "manual"});
+        //$('#importWarningButton').popover('show');
     }
 
     /*

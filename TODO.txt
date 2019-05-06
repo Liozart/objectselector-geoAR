@@ -1,5 +1,8 @@
 à faire :
-- importation modèles FBX, OBJ et glTF ( code )
+- importation modèles
+    - FBX
+    - OBJ
+    - glTF/glb
 - importer et appliquer texture sur texte et objet (répéter texture ou non)
 - importer police
 - liste d'objets basiques à proposer
