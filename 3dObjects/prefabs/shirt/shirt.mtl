@@ -52,8 +52,8 @@ newmtl st_wood
 	Kd 0.9137 0.7843 0.5608
 	Ks 0.0000 0.0000 0.0000
 	Ke 0.0000 0.0000 0.0000
-	map_Ka wood col.jpg
-	map_Kd wood col.jpg
+	map_Ka wood_col.jpg
+	map_Kd wood_col.jpg
 
 newmtl standart_metal
 	Ns 43.0000
