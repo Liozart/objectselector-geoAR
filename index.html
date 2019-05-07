@@ -36,14 +36,15 @@
             Warning
         </button>
     </h3>
-    <div id="dropZone" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);"
-         ondragleave="dragLeaveHandler(event);">
-        <p id="dropText">Glissez et déposez les fichiers ici (Modèle et textures)</p>
+    <div id="dropZoneObject" ondrop="dropHandlerObject(event);" ondragover="dragOverHandlerObject(event);"
+         ondragleave="dragLeaveHandlerObject();">
+        <p id="dropTextObject">Glissez et déposez les fichiers ici (Modèle et textures)</p>
     </div>
 
     <h3>Ajouter forme</h3>
     <button onclick="addCube();">Cube</button>
-    <button onclick="addPlane();">Plan</button><br/>
+    <button onclick="addPlane();">Plan</button>
+    <button onclick="addCylinder();">Cylindre</button><br/>
 
     <h5>Modifier couleur</h5>
     <input type="color" id="objColor" name="objColor"
@@ -54,6 +55,12 @@
     0<input type="range" id="objOpacity" min="0" max="1" step="0.0001"
             value="#00ff00" oninput="changeOpacity();">1
     <label for="objOpacity">Opacité</label>
+
+    <h5>Importer texture</h5>
+    <div id="dropZoneTexture" ondrop="dropHandlerTexture(event);" ondragover="dragOverHandlerTexture(event);"
+         ondragleave="dragLeaveHandlerTexture();">
+        <p id="dropTextTexture">Glissez et déposez le fichier jpg ou png</p>
+    </div>
 
     <h3>Ajouter texte</h3>
     <label for="fonts">Police</label>
@@ -74,6 +81,15 @@
     <input type="color" id="textColorOut" name="objColor"
            value="#0000ff">
     <label for="textColorOut">Couleur contours</label>
+    <h5>Importer police
+        <button id="importFontWarningButton" type="button" class="btn btn-warning btn-sm" onclick="toggleImportFontWarningPopover();">
+            Warning
+        </button>
+    </h5>
+    <div id="dropZoneFont" ondrop="dropHandlerFont(event);" ondragover="dragOverHandlerFont(event);"
+         ondragleave="dragLeaveHandlerFont();">
+        <p id="dropTextFont">Glissez et déposez le fichier JSON</p>
+    </div>
 </div>
 
 <script>
@@ -84,12 +100,15 @@
     var fontName = "helvetiker", fontWeight = "regular" ;
     var lastUploadedObjectName = null;
 
-    const storageURL = "storeFile.php";
-    const removeURL = "removeFile.php";
+    const storeFileURL = "storeFile.php";
+    const removeFileURL = "removeFile.php";
+    const storeFontURL = "storeFont.php";
+    const removeFontsURL = "removeFonts.php";
 
     init();
     render();
 
+    //------------------------------------------------------Init & Render------------------------------------------------------
     /*
      * Initalization function
      */
@@ -176,6 +195,7 @@
         renderer.render( scene, camera );
     }
 
+    //------------------------------------------------------Basics objects------------------------------------------------------
     /*
      * Add a new cube to the scene
      */
@@ -217,9 +237,31 @@
     }
 
     /*
+     * Add a new cylinder to the scene
+     */
+    function addCylinder(){
+        var color = new THREE.Color();
+        color.setHex("0x" + ($("#objColor").val()).replace("#", ""));
+        var geometry = new THREE.CylinderGeometry(100, 100, 100);
+        var material = new THREE.MeshLambertMaterial( { color: color,
+            transparent: true, opacity: 1.0} );
+        var cylinder = new THREE.Mesh( geometry, material );
+        cylinder.castShadow = true;
+        cylinder.receiveShadow = true;
+        objects[objects_count] = cylinder;
+        selected_object = objects_count;
+        objects_count++;
+        scene.add( cylinder );
+        control.attach( cylinder );
+        render();
+    }
+
+    //------------------------------------------------------Text------------------------------------------------------
+    /*
      * Add a new text mesh to the scene
      */
     function addText() {
+        //Get selected colors
         var colorText = new THREE.Color();
         colorText.setHex("0x" + ($("#textColor").val()).replace("#", ""));
         var colorTextOut = new THREE.Color();
@@ -230,7 +272,15 @@
         var materialSide = new THREE.MeshBasicMaterial( { color: colorTextOut } );
         var materialArray = [ materialFront, materialSide ];
 
-        loader.load( "fonts/" + fontName + "_" + fontWeight + ".typeface.json", function ( font ) {
+        //Imported fonts contains weight in its name; we don't add it is so
+        var finalfontname;
+        console.log("fname : " + fontName);
+        if (fontName.includes('regular') || fontName.includes('bold'))
+            finalfontname = fontName + ".typeface.json";
+        else
+            finalfontname = fontName + "_" + fontWeight + ".typeface.json";
+        //Then load the font and create text object
+        loader.load( "fonts/" + finalfontname, function ( font ) {
             var geometry = new THREE.TextGeometry( $("#textToAdd").val(), {
                 font: font,
                 size: 80,
@@ -270,6 +320,7 @@
         else fontWeight = "regular";
     }
 
+    //------------------------------------------------------Controls------------------------------------------------------
     /*
      * Switch transform control to the next object
      */
@@ -299,6 +350,7 @@
         render();
     }
 
+    //------------------------------------------------------Basic operations------------------------------------------------------
     /*
      * Change object's color
      */
@@ -316,15 +368,28 @@
     function changeOpacity() {
         var opacity = $("#objOpacity").val();
         if (selected_object !== null) {
-            objects[selected_object].material.opacity = opacity;
+            //If its a basic mesh
+            if (objects[selected_object] instanceof THREE.Mesh){
+                objects[selected_object].material.opacity = opacity;
+            }
+            else {
+                //If its an imported object
+                objects[selected_object].traverse( function (child) {
+                    if (child instanceof THREE.Mesh) {
+                        child.material.opacity = opacity;
+                        child.material.transparent = true;
+                    }
+                });
+            }
             render();
         }
     }
 
+    //------------------------------------------------------Drag&Drop Handlers------------------------------------------------------
     /*
-     * Drop file in zone
+     * Drop file in object import zone
      */
-    function dropHandler(ev) {
+    function dropHandlerObject(ev) {
         $("#dropText").fadeIn(500);
         //Prevent default behavior (Prevent file from being opened)
         ev.preventDefault();
@@ -333,62 +398,77 @@
             for (var i = 0; i < ev.dataTransfer.items.length; i++) {
                 //If dropped items aren't files, reject them
                 if (ev.dataTransfer.items[i].webkitGetAsEntry().isDirectory) {
-                    showPopupForMilliSeconds("dropZone", "Veuillez mettre uniquement des fichiers.", 4000);
+                    showPopupForMilliSeconds("dropZone", "Veuillez mettre uniquement des fichiers.", 4000, false);
                     return;
                 }
                 if (ev.dataTransfer.items[i].kind !== 'file') {
-                    showPopupForMilliSeconds("dropZone", "Veuillez mettre uniquement des fichiers.", 4000);
+                    showPopupForMilliSeconds("dropZone", "Veuillez mettre uniquement des fichiers.", 4000, false);
                     return;
                 }
             }
 
-            //showPopupForMilliSeconds("dropZone", "File(s) are uploading...", 4000);
-            $("#dropZone").popover({"content" : "Uploading du fichier..", "trigger" : "manual"});
-            $("#dropZone").popover('show');
+            //showPopupForMilliSeconds("dropZoneObject", "File(s) are uploading...", 4000);
+            $("#dropZoneObject").popover({"content" : "Uploading du fichier..", "trigger" : "manual"});
+            $("#dropZoneObject").popover('show');
             //Upload files on server and load the object in the scene
             uploadFilesOnServerAndLoad(ev.dataTransfer.items);
         }
     }
 
     /*
-     * Upload the dropped files on the server in the temp folder
-     * by calling the php script
+     * Drop file in font import zone
      */
-    function uploadFilesOnServerAndLoad(files) {
-        var fdata = new FormData();
-        var format;
-        for (var i = 0; i < files.length; i++){
-            var f = files[i].getAsFile();
-            fdata.append("files[]", f);
+    function dropHandlerFont(ev){
+        $("#dropTextFont").fadeIn(500);
+        //Prevent default behavior (Prevent file from being opened)
+        ev.preventDefault();
+        if (ev.dataTransfer.items) {
+            var filename = ev.dataTransfer.items[0].getAsFile().name;
+            //Check if file is JSON
+            if (filename.toLowerCase().includes(".json")){
+                //Download font to server
+                var fdata = new FormData();
+                fdata.append("files[]", ev.dataTransfer.items[0].getAsFile());
+                fetch(storeFontURL, {
+                    method: 'POST',
+                    body: fdata,
+                }).then(response => {
+                    if (response.ok) {
+                        //Add font to list
+                        $("#fonts").append('<option value="' + filename.split(".")[0].toLowerCase() + '">'
+                            + filename.split(".")[0].toLowerCase() + '</option>');
+                        showPopupForMilliSeconds("dropZoneFont", "Police ajoutée.", 4000, false);
+                    }
+                });
+            }
         }
-        //Get object format and name
-        format = getDroppedFilesFormat(files);
-        lastUploadedObjectName = getDroppedFilesObjectName(files);
-        fdata.append("folder", lastUploadedObjectName.split(".")[0]);
-        fetch(storageURL, {
-            method: 'POST',
-            body: fdata,
-        }).then(response => {
-            if (response.ok){
-                $("#dropZone").popover('dispose');
-                showPopupForMilliSeconds("dropZone", "Fichier uploadé. Chargement de l'objet..", 3000);
-                //Load model into scene when uploaded
-                switch (format) {
-                    case "fbx": LoadFBXObject();
-                        break;
-                    case "obj": LoadOBJObject();
-                        break;
-                    case "gltf": LoadGLTFObject();
-                        break;
-                }
-            }
-            else {
-                $("#dropZone").popover('dispose');
-                showPopupForMilliSeconds("dropZone", "Erreur lors de l'upload", 4000);
-            }
-        });
     }
 
+    /*
+     * Prevent browser's default drop event
+     */
+    function dragOverHandlerObject(ev) {
+        $("#dropText").fadeOut(500);
+        // Prevent default behavior (Prevent file from being opened)
+        ev.preventDefault();
+    }
+    function dragOverHandlerFont(ev) {
+        $("#dropTextFont").fadeOut(500);
+        // Prevent default behavior (Prevent file from being opened)
+        ev.preventDefault();
+    }
+
+    /*
+     * Drag leave zone
+     */
+    function dragLeaveHandlerObject(){
+        $("#dropText").fadeIn(500);
+    }
+    function dragLeaveHandlerFont(){
+        $("#dropTextFont").fadeIn(500);
+    }
+
+    //------------------------------------------------------Object load functions------------------------------------------------------
     /*
      * Load the uploaded FBX object to the scene
      */
@@ -406,17 +486,18 @@
             } );*/
             console.log("Loaded");
             objects[objects_count] = object;
+            selected_object = objects_count;
             objects_count++;
             scene.add( object );
             control.attach(object);
             object.scale.set(10, 10, 10,);
             //Remove files when object is on scene
-            //removeTempFolder();
+            removeTempFolder();
             render();
         },
         function ( error ) {
-            $("#dropZone").popover('dispose');
-            showPopupForMilliSeconds("dropZone", "Erreur lors du chargement :" + error, 10000);
+            $("#dropZoneObject").popover('dispose');
+            showPopupForMilliSeconds("dropZone", "Erreur lors du chargement :" + error, 10000, false);
             console.log(error);
         });
     }
@@ -438,6 +519,7 @@
                 } );
                 console.log("Loaded");
                 objects[objects_count] = gltf.scene;
+                selected_object = objects_count;
                 objects_count++;
                 scene.add( gltf.scene );
                 control.attach(gltf.scene);
@@ -453,8 +535,8 @@
             },
             // called when loading has errors
             function ( error ) {
-                $("#dropZone").popover('dispose');
-                showPopupForMilliSeconds("dropZone", "Erreur lors du chargement :" + error, 10000);
+                $("#dropZoneObject").popover('dispose');
+                showPopupForMilliSeconds("dropZone", "Erreur lors du chargement :" + error, 10000, false);
             }
         );
     }
@@ -473,6 +555,7 @@
             objLoader.setPath('3dObjects/temp/' + lastUploadedObjectName.split(".")[0] + '/');
             objLoader.load(lastUploadedObjectName, function (object) {
                 objects[objects_count] = object;
+                selected_object = objects_count;
                 objects_count++;
                 scene.add(object);
                 object.scale.set(10, 10, 10,);
@@ -484,8 +567,49 @@
         });
     }
 
+    //------------------------------------------------------Utils functions------------------------------------------------------
+    /*
+    * Upload the dropped files on the server in the temp folder
+    * by calling the php script
+    * @param files : the list of the files to upload
+    */
+    function uploadFilesOnServerAndLoad(files) {
+        var fdata = new FormData();
+        var format;
+        for (var i = 0; i < files.length; i++){
+            var f = files[i].getAsFile();
+            fdata.append("files[]", f);
+        }
+        //Get object format and name
+        format = getDroppedFilesFormat(files);
+        lastUploadedObjectName = getDroppedFilesObjectName(files);
+        fdata.append("folder", lastUploadedObjectName.split(".")[0]);
+        fetch(storeFileURL, {
+            method: 'POST',
+            body: fdata,
+        }).then(response => {
+            if (response.ok){
+                $("#dropZoneObject").popover('dispose');
+                showPopupForMilliSeconds("dropZone", "Fichier uploadé. Chargement de l'objet..", 3000, false);
+                //Load model into scene when uploaded
+                switch (format) {
+                    case "fbx": LoadFBXObject();
+                        break;
+                    case "obj": LoadOBJObject();
+                        break;
+                    case "gltf": LoadGLTFObject();
+                        break;
+                }
+            }
+            else {
+                $("#dropZoneObject").popover('dispose');
+                showPopupForMilliSeconds("dropZone", "Erreur lors de l'upload", 4000, false);
+            }
+        });
+    }
     /*
      * Returns the dropped object's format
+     * @param files : the list of the files
      */
     function getDroppedFilesFormat(files){
         for (var i = 0; i < files.length; i++){
@@ -502,6 +626,7 @@
 
     /*
      * Returns the file's name of the object
+     * @param files : the list of the files
      */
     function getDroppedFilesObjectName(files){
         for (var i = 0; i < files.length; i++){
@@ -519,39 +644,26 @@
     function removeTempFolder(){
         var fdata = new FormData();
         fdata.append("folder", lastUploadedObjectName.split(".")[0]);
-        fetch(removeURL, {
+        fetch(removeFileURL, {
             method: 'POST',
             body: fdata,
         }).then(response => {
             if (!response.ok){
-                $("#dropZone").popover('dispose');
-                showPopupForMilliSeconds("dropZone", "Erreur lors de l'effacement du fichier temp", 4000);
+                $("#dropZoneObject").popover('dispose');
+                showPopupForMilliSeconds("dropZone", "Erreur lors de l'effacement du fichier temp", 4000, false);
             }
         });
     }
 
     /*
-     * Prevent browser's default drop event
-     */
-    function dragOverHandler(ev) {
-        $("#dropText").fadeOut(500);
-
-        // Prevent default behavior (Prevent file from being opened)
-        ev.preventDefault();
-    }
-
-    /*
-     * Drag leave zone
-     */
-    function dragLeaveHandler(ev){
-        $("#dropText").fadeIn(500);
-    }
-
-    /*
      * Create and show a popover for a selected time
+     * @param zone : the html component to attach the popover
+     * @param text : the popover text
+     * @param time : the time in ms before hiding the popover
+     * @param html : if the text contains html code to be interpreted
      */
-    function showPopupForMilliSeconds(zone, text, time){
-        $("#" + zone).popover({"content" : text, "trigger" : "manual"});
+    function showPopupForMilliSeconds(zone, text, time, html){
+        $("#" + zone).popover({"content" : text, "trigger" : "manual", "html" : html});
         $("#" + zone).popover('show');
         window.setTimeout(hidePopover, time);
 
@@ -561,21 +673,36 @@
     }
 
     /*
-     * Toogle the popover of the import instructions
+     * Toogle the popover of the import instructions (warning buttons)
      */
     function toggleImportWarningPopover(){
-        //$('#importWarningButton').popover('dispose');
         var text = 'Les dossiers ne sont pas supportés, ne placez que des fichiers. ' +
             'Si besoin, modifier les fichiers .gltf ou .mtl pour supprimer le chemin vers les textures et ne garder ' +
             'que les noms des textures.\nL\'éventuel fichier .mtl doit être nommé avec le même nom que le fichier .obj.' +
             '\nLes textures 3dsMax | maps | texmap_diffuse map ne sont pas supportées.';
-        showPopupForMilliSeconds("importWarningButton", text, 7500);
-        //$("#importWarningButton").popover({"content" : text, "trigger" : "manual"});
-        //$('#importWarningButton').popover('show');
+        showPopupForMilliSeconds("importWarningButton", text, 7500, false);
+    }
+    function toggleImportFontWarningPopover(){
+        var text = 'Le fichier de police doit être au format JSON. Il est possible de convertir ' +
+            'un fichier de police classique à cette adresse : ' +
+            "<a href='https://gero3.github.io/facetype.js'>https://gero3.github.io/facetype.js/</a>";
+        showPopupForMilliSeconds("importFontWarningButton", text, 7000, true);
     }
 
+    //------------------------------------------------------Windows events------------------------------------------------------
     /*
-     * Windows resize event
+     * Windows quit event : remove imported fonts
+     */
+    window.onbeforeunload = function (e) {
+        var fdata = new FormData();
+        fetch(removeFontsURL, {
+            method: 'POST',
+            body: fdata,
+        });
+    };
+
+    /*
+     * Windows resize event : resize render canvas
      */
     window.addEventListener( 'resize', onWindowResize, false );
     function onWindowResize() {

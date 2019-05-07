@@ -1,14 +1,11 @@
 à faire :
-- importation modèles
-    - FBX
-    - OBJ
-    - glTF/glb
-- importer et appliquer texture sur texte et objet (répéter texture ou non)
-- importer police
+- importer et appliquer texture sur texte et objet (répéter texture ou non, offset)
 - liste d'objets basiques à proposer
 - exporter en glb
 - plus de propriétés modifiables par objet (texte : weight, bevel)
-- design du panel ( faire pop les propriétés de l'objet sélectionné (couleur, opcaité..))
+- design du panel ( faire pop les propriétés de l'objet sélectionné (couleur, opacité, texture,..))
+- refactoriser code
+- Affiner importation d'objets
 - hiérarchie pour plusieurs objets
 
 rapport :
@@ -21,4 +18,9 @@ rapport :
     - three.js
     - php
 - fonctionnalités du projet
+    - contrôles basiques
+    - objects basiques
+    - modifs basiques
+    - ajout texte
+    - importations
 - implémentation
