@@ -1,12 +1,16 @@
 à faire :
-- importer et appliquer texture sur texte et objet (répéter texture ou non, offset)
-- liste d'objets basiques à proposer
+- liste d'objets basiques à proposer -> voir feuille
+    - objects préconstruits
+    - objets divers
+- animation -> voir feuille
 - exporter en glb
 - plus de propriétés modifiables par objet (texte : weight, bevel)
 - design du panel ( faire pop les propriétés de l'objet sélectionné (couleur, opacité, texture,..))
 - refactoriser code
-- Affiner importation d'objets
-- hiérarchie pour plusieurs objets
+
+- ((importer et appliquer texture sur texte et objet (répéter texture ou non, offset)))
+- (Affiner importation d'objets (Textures FBX))
+- (hiérarchie pour plusieurs objets)
 
 rapport :
 - but du projet

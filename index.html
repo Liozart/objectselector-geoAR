@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="style/style.css" type="text/css">
 </head>
 <body>
-<div id="info">
+<div id="control">
     <a href="javascript:control.setMode( 'translate' );">"W" translate</a> |
     <a href="javascript:control.setMode( 'rotate' );">"E" rotate</a> |
     <a href="javascript:control.setMode( 'scale' );">"R" scale</a> |
@@ -29,81 +29,131 @@
 <script src="js/inflate.min.js"></script>
 <script src="js/MTLLoader.js"></script>
 
+<nav class="navbar navbar-expand-lg navbar-light bg-light" id="navbar">
+    <span class="navbar-brand">Ajout d'objets</span>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav mr-auto">
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    Ajouter
+                </a>
+                <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                    <a class="dropdown-item" href="#" onclick="addPremadeObject();">Bannière</a>
+                    <a class="dropdown-item" href="#" onclick="addPremadeObject();">Capsule</a>
+                    <a class="dropdown-item" href="#" onclick="addPremadeObject();">Texte défilant</a>
+                    <a class="dropdown-item" href="#" onclick="addPremadeObject();">Texte circulaire</a>
+                    <div class="dropdown-divider"></div>
+                </div>
+            </li>
+            <form class="form-inline" style="margin-left:20px;">
+                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="toggleAdvancedControls();">
+                    Montrer contrôles avancés
+                </button>
+            </form>
+        </ul>
+    </div>
+</nav>
+
 <div id="panel" class="container">
-    <h3>
-        Importer FBX, OBJ ou glTF/glb
-        <button id="importWarningButton" type="button" class="btn btn-warning btn-sm" onclick="toggleImportWarningPopover();">
-            Warning
-        </button>
-    </h3>
-    <div id="dropZoneObject" ondrop="dropHandlerObject(event);" ondragover="dragOverHandlerObject(event);"
-         ondragleave="dragLeaveHandlerObject();">
-        <p id="dropTextObject">Glissez et déposez les fichiers ici (Modèle et textures)</p>
+    <div id="importZone">
+        <h5>Glisser & déposer
+            <button id="importWarningButton" type="button" class="btn btn-warning btn-sm" onclick="toggleImportWarningPopover();">
+                Instructions
+            </button>
+        </h5>
+        <div id="dropZoneObject" ondrop="dropHandlerObject(event);" ondragover="dragOverHandlerObject(event);"
+             ondragleave="dragLeaveHandlerObject();">
+            <p id="dropTextObject">Importer objet 3D FBX, OBJ ou glTF/glb (modèle et textures)<br/> Ou police de charactères (format JSON)</p>
+        </div>
+        <!-- <h5>Importer police
+            <button id="importFontWarningButton" type="button" class="btn btn-warning btn-sm" onclick="toggleImportFontWarningPopover();">
+                Warning
+            </button>
+        </h5>
+        <div id="dropZoneFont" ondrop="dropHandlerFont(event);" ondragover="dragOverHandlerFont(event);"
+             ondragleave="dragLeaveHandlerFont();">
+            <p id="dropTextFont">Importer police (Fichier JSON)</p>
+        </div> -->
     </div>
 
-    <h3>Ajouter forme</h3>
-    <button onclick="addCube();">Cube</button>
-    <button onclick="addPlane();">Plan</button>
-    <button onclick="addCylinder();">Cylindre</button><br/>
+    <div id="options">
+        Options de l'objet
+        <div id="optionColor">
+            <h5>Modifier couleur</h5>
+            <input type="color" id="objColor" name="objColor"
+                   value="#00ff00" onchange="changeColor();">
+            <label for="objColor">Couleur</label>
+        </div>
 
-    <h5>Modifier couleur</h5>
-    <input type="color" id="objColor" name="objColor"
-           value="#00ff00" onchange="changeColor();">
-    <label for="objColor">Couleur</label>
+        <div id="optionText">
+            <h5>Modifier texte</h5>
+            <label for="fonts">Police</label>
+            <select id="fonts" onchange="changeFont();">
+                <option value="helvetiker">helvetiker</option>
+                <option value="optimer">optimer</option>
+                <option value="gentilis">gentilis</option>
+                <option value="droid_sans">droid sans</option>
+                <option value="droid_serif">droid serif</option>
+            </select>
+            <input type="checkbox" id="fontWeight" onchange="changeFontWeight();"> Gras<br/>
+            <input type="color" id="textColor" name="objColor"
+                   value="#ff0000" onchange="changeColorTextIn();">
+            <label for="textColor">Couleur texte</label>
+            <input type="color" id="textColorOut" name="objColor"
+                   value="#0000ff" onchange="changeColorTextOut();">
+            <label for="textColorOut">Couleur contours</label>
+        </div>
 
-    <h5>Modifier transparence</h5>
-    0<input type="range" id="objOpacity" min="0" max="1" step="0.0001"
-            value="#00ff00" oninput="changeOpacity();">1
-    <label for="objOpacity">Opacité</label>
+        <div id="optionOpacity">
+            <h5>Modifier transparence</h5>
+            0<input type="range" id="objOpacity" min="0" max="1" step="0.0001"
+                    value="#00ff00" oninput="changeOpacity();">1
+            <label for="objOpacity">Opacité</label>
+        </div>
+    </div>
 
-    <h5>Importer texture</h5>
+    <!-- <h5>Importer texture</h5>
     <div id="dropZoneTexture" ondrop="dropHandlerTexture(event);" ondragover="dragOverHandlerTexture(event);"
          ondragleave="dragLeaveHandlerTexture();">
-        <p id="dropTextTexture">Glissez et déposez le fichier jpg ou png</p>
-    </div>
-
-    <h3>Ajouter texte</h3>
-    <label for="fonts">Police</label>
-    <select id="fonts" onchange="changeFont();">
-        <option value="helvetiker">helvetiker</option>
-        <option value="optimer">optimer</option>
-        <option value="gentilis">gentilis</option>
-        <option value="droid_sans">droid sans</option>
-        <option value="droid_serif">droid serif</option>
-    </select>
-    <input type="checkbox" id="fontWeight" onchange="changeFontWeight();"> Gras<br/>
-    <label for="textToAdd">Texte</label>
-    <input type="text" id="textToAdd">
-    <button onclick="addText();">Ajouter</button><br/>
-    <input type="color" id="textColor" name="objColor"
-           value="#ff0000">
-    <label for="textColor">Couleur</label>
-    <input type="color" id="textColorOut" name="objColor"
-           value="#0000ff">
-    <label for="textColorOut">Couleur contours</label>
-    <h5>Importer police
-        <button id="importFontWarningButton" type="button" class="btn btn-warning btn-sm" onclick="toggleImportFontWarningPopover();">
-            Warning
-        </button>
-    </h5>
-    <div id="dropZoneFont" ondrop="dropHandlerFont(event);" ondragover="dragOverHandlerFont(event);"
-         ondragleave="dragLeaveHandlerFont();">
-        <p id="dropTextFont">Glissez et déposez le fichier JSON</p>
+        <p id="dropTextTexture">Glissez et déposez le fichier JPG ou PNG</p>
+    </div> -->
+    <div id="advancedControls">
+        <b style="color: grey;">Conrtôles avancés</b>
+        <h4>Ajouter forme</h4>
+        <button onclick="addCube();">Cube</button>
+        <button onclick="addPlane();">Plan</button>
+        <button onclick="addCylinder();">Cylindre</button><br/>
+        <h4 style="margin-top: 10px;">Ajouter texte</h4>
+        <label for="textToAdd">Texte</label>
+        <input type="text" id="textToAdd">
+        <button onclick="addText();">Ajouter</button><br/>
     </div>
 </div>
 
 <script>
     var camera, scene, renderer, control, orbit, light;
+    //We keep track of all objects in the scene
     var objects = [];
+    //We keep track of the object's type : basic, text, object, banner, capsule, circulary, parade
+    var myTypes = Object.freeze({"basic":1, "text":2, "importedObject":3, "banner":4, "capsule":5, "circulary":6, "parade":7});
+    var objects_types = [];
     var objects_count = 0;
     var selected_object = null;
     var fontName = "helvetiker", fontWeight = "regular" ;
-    var lastUploadedObjectName = null;
+    var lastUploadedObjectName = null, lastUploadedTextureName = null;
+    var areAdvancedControlsToggled = false;
 
+    const tempStorePath = '3dObjects/temp/';
     const storeFileURL = "storeFile.php";
     const removeFileURL = "removeFile.php";
     const storeFontURL = "storeFont.php";
     const removeFontsURL = "removeFonts.php";
+    const storeTextureURL = "storeTexture.php";
+    const removeTextureURL = "removeTexture.php";
 
     init();
     render();
@@ -208,11 +258,15 @@
         var cube = new THREE.Mesh( geometry, material );
         cube.castShadow = true;
         cube.receiveShadow = true;
+        //Add object to arrays
         objects[objects_count] = cube;
+        objects_types[objects_count] = myTypes.basic;
         selected_object = objects_count;
         objects_count++;
+        //Add to scene and control
         scene.add( cube );
         control.attach( cube );
+        showControlledObjectOptions();
         render();
     }
 
@@ -228,11 +282,15 @@
         var plane = new THREE.Mesh( geometry, material );
         plane.castShadow = true;
         plane.receiveShadow = true;
+        //Add object to arrays
         objects[objects_count] = plane;
+        objects_types[objects_count] = myTypes.basic;
         selected_object = objects_count;
         objects_count++;
+        //Add to scene and control
         scene.add( plane );
         control.attach( plane );
+        showControlledObjectOptions();
         render();
     }
 
@@ -248,11 +306,15 @@
         var cylinder = new THREE.Mesh( geometry, material );
         cylinder.castShadow = true;
         cylinder.receiveShadow = true;
+        //Add object to arrays
         objects[objects_count] = cylinder;
+        objects_types[objects_count] = myTypes.basic;
         selected_object = objects_count;
-        objects_count++;
+        objects_count++;;
+        //Add to scene and control
         scene.add( cylinder );
         control.attach( cylinder );
+        showControlledObjectOptions();
         render();
     }
 
@@ -295,11 +357,15 @@
             var textMesh = new THREE.Mesh(geometry, materialArray );
 
             //geometry.computeBoundingBox();
+            //Add object to arrays
+            objects_types[objects_count] = myTypes.text;
             objects[objects_count] = textMesh;
             selected_object = objects_count;
-            objects_count++;
+            objects_count++;;
+            //Add to scene and control
             scene.add(textMesh);
             control.attach( textMesh );
+            showControlledObjectOptions();
             render();
         } );
     }
@@ -309,27 +375,129 @@
      */
     function changeFont(){
         fontName = $("#fonts").val();
+        refreshText(false, false);
     }
 
     /*
      * Change selected font weight
      */
     function changeFontWeight(){
-        if ($("#fontWeight").is(":checked"))
-            fontWeight = "bold";
-        else fontWeight = "regular";
+        if (isFontBasic()){
+            if ($("#fontWeight").is(":checked"))
+                fontWeight = "bold";
+            else fontWeight = "regular";
+            refreshText(false, false);
+        }
+    }
+
+    /*
+     * Change selected inner text color
+     */
+    function changeColorTextIn(){
+        refreshText(true, false);
+    }
+
+    /*
+     * Change selected outer text color
+     */
+    function changeColorTextOut(){
+        refreshText(false, true);
+    }
+
+    /*
+     * Recreate a existing text with new color, font or weight
+     */
+    function refreshText(changeColorIn, changeColorOut){
+        //Get new colors if wanted
+        if (changeColorIn){
+            var colorText = new THREE.Color();
+            colorText.setHex("0x" + ($("#textColor").val()).replace("#", ""));
+            //Retrieve old color
+            var colorTextOut = objects[selected_object].material[1].color;
+
+        }
+        else
+        if (changeColorOut) {
+            var colorTextOut = new THREE.Color();
+            colorTextOut.setHex("0x" + ($("#textColorOut").val()).replace("#", ""));
+            //Retrieve old color
+            var colorTextIn = objects[selected_object].material[0].color;
+        }
+        else {
+            //Get actual text colors
+            var colorTextIn = objects[selected_object].material[0].color;
+            var colorTextOut = objects[selected_object].material[1].color;
+        }
+
+        var loader = new THREE.FontLoader();
+        var materialFront = new THREE.MeshBasicMaterial( { color: colorTextIn } );
+        var materialSide = new THREE.MeshBasicMaterial( { color: colorTextOut } );
+        var materialArray = [ materialFront, materialSide ];
+
+        //Imported fonts contains weight in its name; we don't add it is so
+        var finalfontname;
+        console.log("fname : " + fontName);
+        if (fontName.includes('regular') || fontName.includes('bold'))
+            finalfontname = fontName + ".typeface.json";
+        else
+            finalfontname = fontName + "_" + fontWeight + ".typeface.json";
+        //Then load the font and create text object
+        loader.load( "fonts/" + finalfontname, function ( font ) {
+            var geometry = new THREE.TextGeometry( $("#textToAdd").val(), {
+                font: font,
+                size: 80,
+                height: 5,
+                curveSegments: 12,
+                bevelEnabled: true,
+                bevelThickness: 10,
+                bevelSize: 8,
+                bevelOffset: 0,
+                bevelSegments: 5
+            } );
+            var textMesh = new THREE.Mesh(geometry, materialArray );
+
+            //Put new text in the same position/rotation as the old one
+            textMesh.position.copy(objects[selected_object].position);
+            textMesh.rotation.copy(objects[selected_object].rotation);
+            textMesh.scale.copy(objects[selected_object].scale);
+            //geometry.computeBoundingBox();
+            //remove old object
+            scene.remove(objects[selected_object]);
+            //Update object in array
+            objects[selected_object] = textMesh;
+            //Add to scene and control
+            scene.add(textMesh);
+            control.attach( textMesh );
+            showControlledObjectOptions();
+            render();
+        } );
+    }
+
+    /*
+     * Check if the selected font is one of the basic proposed
+     */
+    function isFontBasic(){
+        if (fontName === "helvetiker" || fontName === "optimer" ||
+            fontName === "gentilis" || fontName === "droid_sans" ||
+            fontName === "droid_serif")
+            return true;
+        else return false;
     }
 
     //------------------------------------------------------Controls------------------------------------------------------
     /*
-     * Switch transform control to the next object
+     * Switch transform control to the next object and show options
      */
     function switchObjectControl(){
+        //Switch controls to next object
         if (objects_count === 0) return;
         if (selected_object === objects_count || selected_object === (objects_count - 1))
             selected_object = 0;
         else selected_object++;
             control.attach(objects[selected_object]);
+
+        showControlledObjectOptions();
+
     }
 
     /*
@@ -347,7 +515,54 @@
             selected_object = 0;
             control.attach(objects[selected_object]);
         }
+        showControlledObjectOptions();
         render();
+    }
+
+    /*
+     * Toggle advanced control panel (basic forms, text)
+     */
+    function toggleAdvancedControls() {
+        if (!areAdvancedControlsToggled){
+            areAdvancedControlsToggled = true;
+            $("#toggleAdvanced").html("Cacher contrôles avancés");
+            $("#advancedControls").show();
+        }
+        else{
+            areAdvancedControlsToggled = false;
+            $("#toggleAdvanced").html("Montrer contrôles avancés");
+            $("#advancedControls").hide();
+        }
+    }
+
+    /*
+     * Show selected object options
+     */
+    function showControlledObjectOptions(){
+        //Hide everything then show the right options
+        hideAllOptions();
+        switch (objects_types[selected_object]) {
+            case myTypes.basic:
+                $("#optionColor").show();
+                $("#optionOpacity").show();
+                break;
+            case myTypes.text:
+                $("#optionText").show();
+                $("#optionOpacity").show();
+                break;
+            case myTypes.importedObject:
+                $("#optionOpacity").show();
+                break;
+        }
+    }
+
+    /*
+     * Hide all options
+     */
+    function hideAllOptions(){
+        $("#optionColor").hide();
+        $("#optionOpacity").hide();
+        $("#optionText").hide();
     }
 
     //------------------------------------------------------Basic operations------------------------------------------------------
@@ -387,10 +602,9 @@
 
     //------------------------------------------------------Drag&Drop Handlers------------------------------------------------------
     /*
-     * Drop file in object import zone
+     * Drop files in object import zone
      */
     function dropHandlerObject(ev) {
-        $("#dropText").fadeIn(500);
         //Prevent default behavior (Prevent file from being opened)
         ev.preventDefault();
         if (ev.dataTransfer.items) {
@@ -398,75 +612,105 @@
             for (var i = 0; i < ev.dataTransfer.items.length; i++) {
                 //If dropped items aren't files, reject them
                 if (ev.dataTransfer.items[i].webkitGetAsEntry().isDirectory) {
-                    showPopupForMilliSeconds("dropZone", "Veuillez mettre uniquement des fichiers.", 4000, false);
+                    showPopupForMilliSeconds("dropZoneObject", "Veuillez mettre uniquement des fichiers.", 4000, false);
                     return;
                 }
                 if (ev.dataTransfer.items[i].kind !== 'file') {
-                    showPopupForMilliSeconds("dropZone", "Veuillez mettre uniquement des fichiers.", 4000, false);
+                    showPopupForMilliSeconds("dropZoneObject", "Veuillez mettre uniquement des fichiers.", 4000, false);
                     return;
                 }
             }
-
             //showPopupForMilliSeconds("dropZoneObject", "File(s) are uploading...", 4000);
             $("#dropZoneObject").popover({"content" : "Uploading du fichier..", "trigger" : "manual"});
             $("#dropZoneObject").popover('show');
             //Upload files on server and load the object in the scene
             uploadFilesOnServerAndLoad(ev.dataTransfer.items);
         }
+        $("#dropZoneObject").css('background', 'white');
     }
 
     /*
      * Drop file in font import zone
      */
-    function dropHandlerFont(ev){
-        $("#dropTextFont").fadeIn(500);
+   /* function dropHandlerFont(ev){
         //Prevent default behavior (Prevent file from being opened)
         ev.preventDefault();
+        $("#dropTextFont").fadeIn(500);
         if (ev.dataTransfer.items) {
             var filename = ev.dataTransfer.items[0].getAsFile().name;
             //Check if file is JSON
             if (filename.toLowerCase().includes(".json")){
-                //Download font to server
+
+            }
+            else {
+                showPopupForMilliSeconds("dropZoneFont", "Veuillez mettre un fichier de police JSON.", 3000, false);
+            }
+        }
+    }*/
+
+    /*
+     * Drop files in texture import zone
+     */
+    /*function dropHandlerTexture(ev){
+        //Prevent default behavior (Prevent file from being opened)
+        ev.preventDefault();
+        $("#dropTextTexture").fadeIn(500);
+        if (ev.dataTransfer.items) {
+            var filename = ev.dataTransfer.items[0].getAsFile().name;
+            //Check if file is JSON
+            if (filename.toLowerCase().includes(".png") || filename.toLowerCase().includes(".jpg")
+                    || filename.toLowerCase().includes(".jpeg")){
+                lastUploadedTextureName = filename.toLowerCase();
+                //Download texture to server
                 var fdata = new FormData();
                 fdata.append("files[]", ev.dataTransfer.items[0].getAsFile());
-                fetch(storeFontURL, {
+                fetch(storeTextureURL, {
                     method: 'POST',
                     body: fdata,
                 }).then(response => {
                     if (response.ok) {
-                        //Add font to list
-                        $("#fonts").append('<option value="' + filename.split(".")[0].toLowerCase() + '">'
-                            + filename.split(".")[0].toLowerCase() + '</option>');
-                        showPopupForMilliSeconds("dropZoneFont", "Police ajoutée.", 4000, false);
+                        //Load texture to selected object
+                        LoadTextureToSelectedObject();
                     }
                 });
             }
+            else {
+                showPopupForMilliSeconds("dropZoneFont", "Veuillez mettre un fichier JPG ou PNG.", 3000, false);
+            }
         }
-    }
+    }*/
 
     /*
      * Prevent browser's default drop event
      */
     function dragOverHandlerObject(ev) {
-        $("#dropText").fadeOut(500);
+        $("#dropZoneObject").css('background', '#ffff99');
         // Prevent default behavior (Prevent file from being opened)
         ev.preventDefault();
     }
-    function dragOverHandlerFont(ev) {
+    /*function dragOverHandlerFont(ev) {
         $("#dropTextFont").fadeOut(500);
         // Prevent default behavior (Prevent file from being opened)
         ev.preventDefault();
     }
+    function dragOverHandlerTexture(ev){
+        $("#dropTextTexture").fadeOut(500);
+        // Prevent default behavior (Prevent file from being opened)
+        ev.preventDefault();
+    }*/
 
     /*
      * Drag leave zone
      */
     function dragLeaveHandlerObject(){
-        $("#dropText").fadeIn(500);
+        $("#dropZoneObject").css('background', 'white');
     }
-    function dragLeaveHandlerFont(){
+    /*function dragLeaveHandlerFont(){
         $("#dropTextFont").fadeIn(500);
     }
+    function dragLeaveHandlerTexture(){
+        $("#dropTextTexture").fadeIn(500);
+    }*/
 
     //------------------------------------------------------Object load functions------------------------------------------------------
     /*
@@ -476,7 +720,7 @@
         // model
         var loader = new THREE.FBXLoader();
         console.log("loader");
-        loader.load('3dObjects/temp/' + lastUploadedObjectName.split(".")[0] + '/' + lastUploadedObjectName,
+        loader.load(tempStorePath + lastUploadedObjectName.split(".")[0] + '/' + lastUploadedObjectName,
             function (object){
             /*object.traverse( function ( child ) {
                 if ( child.isMesh ) {
@@ -485,19 +729,23 @@
                 }
             } );*/
             console.log("Loaded");
+            //Add object to arrays
+            objects_types[objects_count] = myTypes.importedObject;
             objects[objects_count] = object;
             selected_object = objects_count;
             objects_count++;
+            //Add object to scene and control
             scene.add( object );
             control.attach(object);
             object.scale.set(10, 10, 10,);
             //Remove files when object is on scene
             removeTempFolder();
+            showControlledObjectOptions();
             render();
         },
         function ( error ) {
             $("#dropZoneObject").popover('dispose');
-            showPopupForMilliSeconds("dropZone", "Erreur lors du chargement :" + error, 10000, false);
+            showPopupForMilliSeconds("dropZoneObject", "Erreur lors du chargement :" + error, 10000, false);
             console.log(error);
         });
     }
@@ -507,7 +755,7 @@
      */
     function LoadGLTFObject(){
         // Instantiate a loader and set path to temp folder
-        var loader = new THREE.GLTFLoader().setPath( '3dObjects/temp/' + lastUploadedObjectName.split(".")[0] + '/');
+        var loader = new THREE.GLTFLoader().setPath(tempStorePath + lastUploadedObjectName.split(".")[0] + '/');
         console.log("Path set");
         // Load a glTF resource
         loader.load( lastUploadedObjectName, function ( gltf ) {
@@ -518,14 +766,18 @@
                     }
                 } );
                 console.log("Loaded");
+                //Add object to arrays
+                objects_types[objects_count] = myTypes.importedObject;
                 objects[objects_count] = gltf.scene;
                 selected_object = objects_count;
                 objects_count++;
+                //Add object to scene and control
                 scene.add( gltf.scene );
                 control.attach(gltf.scene);
                 gltf.scene.scale.set(10, 10, 10,);
                 //Remove files when object is on scene
                 removeTempFolder();
+                showControlledObjectOptions();
                 render();
             },
             // called while loading is progressing
@@ -536,7 +788,7 @@
             // called when loading has errors
             function ( error ) {
                 $("#dropZoneObject").popover('dispose');
-                showPopupForMilliSeconds("dropZone", "Erreur lors du chargement :" + error, 10000, false);
+                showPopupForMilliSeconds("dropZoneObject", "Erreur lors du chargement :" + error, 10000, false);
             }
         );
     }
@@ -546,28 +798,33 @@
      */
     function LoadOBJObject() {
         var mtlLoader = new THREE.MTLLoader();
-        mtlLoader.setResourcePath('3dObjects/temp/' + lastUploadedObjectName.split(".")[0] + '/');
-        mtlLoader.setPath('3dObjects/temp/' + lastUploadedObjectName.split(".")[0] + '/');
+        mtlLoader.setResourcePath(tempStorePath + lastUploadedObjectName.split(".")[0] + '/');
+        mtlLoader.setPath(tempStorePath + lastUploadedObjectName.split(".")[0] + '/');
         mtlLoader.load(lastUploadedObjectName.split(".")[0] + '.mtl', function (materials) {
             materials.preload();
             var objLoader = new THREE.OBJLoader();
             objLoader.setMaterials(materials);
-            objLoader.setPath('3dObjects/temp/' + lastUploadedObjectName.split(".")[0] + '/');
+            objLoader.setPath(tempStorePath + lastUploadedObjectName.split(".")[0] + '/');
             objLoader.load(lastUploadedObjectName, function (object) {
+                //Add object to arrays
+                objects_types[objects_count] = myTypes.importedObject;
                 objects[objects_count] = object;
                 selected_object = objects_count;
                 objects_count++;
+                //Add object to scene and control
                 scene.add(object);
                 object.scale.set(10, 10, 10,);
                 control.attach(object);
                 //Remove files when object is on scene
                 removeTempFolder();
+                showControlledObjectOptions();
                 render();
             });
         });
     }
 
-    //------------------------------------------------------Utils functions------------------------------------------------------
+    //------------------------------------------------------Utils functions-------------------------------------------------------
+
     /*
     * Upload the dropped files on the server in the temp folder
     * by calling the php script
@@ -580,33 +837,77 @@
             var f = files[i].getAsFile();
             fdata.append("files[]", f);
         }
-        //Get object format and name
+        //Get object format
         format = getDroppedFilesFormat(files);
-        lastUploadedObjectName = getDroppedFilesObjectName(files);
-        fdata.append("folder", lastUploadedObjectName.split(".")[0]);
-        fetch(storeFileURL, {
-            method: 'POST',
-            body: fdata,
-        }).then(response => {
-            if (response.ok){
-                $("#dropZoneObject").popover('dispose');
-                showPopupForMilliSeconds("dropZone", "Fichier uploadé. Chargement de l'objet..", 3000, false);
-                //Load model into scene when uploaded
-                switch (format) {
-                    case "fbx": LoadFBXObject();
-                        break;
-                    case "obj": LoadOBJObject();
-                        break;
-                    case "gltf": LoadGLTFObject();
-                        break;
+        //a font was dropped
+        if (format === "json"){
+            var filename = files[0].getAsFile().name;
+            //Download font to server
+            var fdata = new FormData();
+            fdata.append("files[]", files[0].getAsFile());
+            fetch(storeFontURL, {
+                method: 'POST',
+                body: fdata,
+            }).then(response => {
+                if (response.ok) {
+                    //Add font to list
+                    $("#fonts").append('<option value="' + filename.split(".")[0].toLowerCase() + '">'
+                        + filename.split(".")[0].toLowerCase() + '</option>');
+                    $("#dropZoneObject").popover('dispose');
+                    showPopupForMilliSeconds("dropZoneObject", "Police ajoutée.", 4000, false);
                 }
-            }
-            else {
-                $("#dropZoneObject").popover('dispose');
-                showPopupForMilliSeconds("dropZone", "Erreur lors de l'upload", 4000, false);
+            });
+        }
+        else{
+            //an object was dropped
+            lastUploadedObjectName = getDroppedFilesObjectName(files);
+            fdata.append("folder", lastUploadedObjectName.split(".")[0]);
+            fetch(storeFileURL, {
+                method: 'POST',
+                body: fdata,
+            }).then(response => {
+                if (response.ok){
+                    $("#dropZoneObject").popover('dispose');
+                    showPopupForMilliSeconds("dropZoneObject", "Fichier uploadé. Chargement de l'objet..", 3000, false);
+                    //Load model into scene when uploaded
+                    switch (format) {
+                        case "fbx": LoadFBXObject();
+                            break;
+                        case "obj": LoadOBJObject();
+                            break;
+                        case "gltf": LoadGLTFObject();
+                            break;
+                    }
+                }
+                else {
+                    $("#dropZoneObject").popover('dispose');
+                    showPopupForMilliSeconds("dropZoneObject", "Erreur lors de l'upload", 4000, false);
+                }
+            });
+        }
+    }
+
+    /*
+     * Load the imported texture on the current selected object
+     * won't work on imported objects
+     */
+    function LoadTextureToSelectedObject(){
+        const loader = new THREE.TextureLoader();
+        loader.load(tempStorePath + lastUploadedTextureName, (texture) => {
+            const material = new THREE.MeshBasicMaterial({
+                map: texture,
+            });
+                        //Check if object basic/text
+            if (objects[selected_object] instanceof THREE.Mesh) {
+                objects[selected_object].material.texture = texture;
+                objects[selected_object].material.texture.needsUpdate = true;
+                //Finally render and remove texture from server
+                render();
+                removeTempTexture();
             }
         });
     }
+
     /*
      * Returns the dropped object's format
      * @param files : the list of the files
@@ -620,6 +921,8 @@
                 return "obj";
             else if (f.includes(".glb") || f.includes(".gltf"))
                 return "gltf";
+            else if (f.includes(".json"))
+                return "json";
         }
         return null;
     }
@@ -650,8 +953,20 @@
         }).then(response => {
             if (!response.ok){
                 $("#dropZoneObject").popover('dispose');
-                showPopupForMilliSeconds("dropZone", "Erreur lors de l'effacement du fichier temp", 4000, false);
+                showPopupForMilliSeconds("dropZoneObject", "Erreur lors de l'effacement du fichier temp", 4000, false);
             }
+        });
+    }
+
+    /*
+     * Remove the temp texture
+     */
+    function removeTempTexture(){
+        var fdata = new FormData();
+        fdata.append("name", lastUploadedTextureName);
+        fetch(removeTextureURL, {
+            method: 'POST',
+            body: fdata,
         });
     }
 
@@ -676,17 +991,14 @@
      * Toogle the popover of the import instructions (warning buttons)
      */
     function toggleImportWarningPopover(){
-        var text = 'Les dossiers ne sont pas supportés, ne placez que des fichiers. ' +
+        var text = "<h6>Objets 3D</h6>" + 'Les dossiers ne sont pas supportés, ne placez que des fichiers. ' +
             'Si besoin, modifier les fichiers .gltf ou .mtl pour supprimer le chemin vers les textures et ne garder ' +
             'que les noms des textures.\nL\'éventuel fichier .mtl doit être nommé avec le même nom que le fichier .obj.' +
-            '\nLes textures 3dsMax | maps | texmap_diffuse map ne sont pas supportées.';
-        showPopupForMilliSeconds("importWarningButton", text, 7500, false);
-    }
-    function toggleImportFontWarningPopover(){
-        var text = 'Le fichier de police doit être au format JSON. Il est possible de convertir ' +
+            '\nLes textures map de 3dsMax ne sont pas supportées.' +
+                "<h6>Police de charactères</h6>" + 'Le fichier de police doit être au format JSON. Il est possible de convertir ' +
             'un fichier de police classique à cette adresse : ' +
             "<a href='https://gero3.github.io/facetype.js'>https://gero3.github.io/facetype.js/</a>";
-        showPopupForMilliSeconds("importFontWarningButton", text, 7000, true);
+        showPopupForMilliSeconds("importWarningButton", text, 10000, true);
     }
 
     //------------------------------------------------------Windows events------------------------------------------------------

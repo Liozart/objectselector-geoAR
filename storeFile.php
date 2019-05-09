@@ -2,20 +2,6 @@
 /*
  * Store the imported file in a temp folder to load it in the scene
  */
-/*if(!empty($_POST['name']) && !empty($_POST['data'])){
-//Model name
-$fname = $_POST['name'];
-//Model data
-$data = $_POST['data'];
-//creates new file
-$file = fopen("3dObjects/temp/" .$fname, 'w');
-fwrite($file, $data);
-fclose($file);
-
-$file = fopen("3dObjects/temp/data.txt", 'w');
-fwrite($file, $data);
-fclose($file);
-}*/
 var_dump($_FILES);
 
 if (isset($_FILES['files']))
