@@ -28,6 +28,7 @@
 <script src="js/GeometryUtils.js"></script>
 <script src="js/inflate.min.js"></script>
 <script src="js/MTLLoader.js"></script>
+<script src="js/classes.js"></script>
 
 <nav class="navbar navbar-expand-lg navbar-light bg-light" id="navbar">
     <span class="navbar-brand">Ajout d'objets</span>
@@ -42,10 +43,10 @@
                     Ajouter
                 </a>
                 <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                    <a class="dropdown-item" href="#" onclick="addPremadeObject();">Bannière</a>
-                    <a class="dropdown-item" href="#" onclick="addPremadeObject();">Capsule</a>
-                    <a class="dropdown-item" href="#" onclick="addPremadeObject();">Texte défilant</a>
-                    <a class="dropdown-item" href="#" onclick="addPremadeObject();">Texte circulaire</a>
+                    <a class="dropdown-item" href="#" id="addPrefabBanner" onclick="addPremadeObject(1);">Bannière</a>
+                    <a class="dropdown-item" href="#" onclick="addPremadeObject(2);">Capsule</a>
+                    <a class="dropdown-item" href="#" onclick="addPremadeObject(3);">Texte défilant</a>
+                    <a class="dropdown-item" href="#" onclick="addPremadeObject(4);">Texte circulaire</a>
                     <div class="dropdown-divider"></div>
                 </div>
             </li>
@@ -116,13 +117,19 @@
         </div>
     </div>
 
+    <div id="optionAnimation">
+        <h5>Animer l'objet</h5>
+        <input type="checkbox" id="animRotate">
+        <label for="animRotate">Rotation</label>
+    </div>
+
     <!-- <h5>Importer texture</h5>
     <div id="dropZoneTexture" ondrop="dropHandlerTexture(event);" ondragover="dragOverHandlerTexture(event);"
          ondragleave="dragLeaveHandlerTexture();">
         <p id="dropTextTexture">Glissez et déposez le fichier JPG ou PNG</p>
     </div> -->
     <div id="advancedControls">
-        <b style="color: grey;">Conrtôles avancés</b>
+        <b style="color: grey;">Contrôles avancés</b>
         <h4>Ajouter forme</h4>
         <button onclick="addCube();">Cube</button>
         <button onclick="addPlane();">Plan</button>
@@ -140,14 +147,18 @@
     var objects = [];
     //We keep track of the object's type : basic, text, object, banner, capsule, circulary, parade
     var myTypes = Object.freeze({"basic":1, "text":2, "importedObject":3, "banner":4, "capsule":5, "circulary":6, "parade":7});
-    var objects_types = [];
+    var objects_types = [], objects_class = [];
     var objects_count = 0;
     var selected_object = null;
     var fontName = "helvetiker", fontWeight = "regular" ;
     var lastUploadedObjectName = null, lastUploadedTextureName = null;
     var areAdvancedControlsToggled = false;
 
+    var bner;
+
     const tempStorePath = '3dObjects/temp/';
+    const prefabStorePath = '3dObjects/prefabs';
+
     const storeFileURL = "storeFile.php";
     const removeFileURL = "removeFile.php";
     const storeFontURL = "storeFont.php";
@@ -158,7 +169,7 @@
     init();
     render();
 
-    //------------------------------------------------------Init & Render------------------------------------------------------
+    //------------------------------------------------------Init & Render----------------------------------------------------------------------
     /*
      * Initalization function
      */
@@ -245,7 +256,7 @@
         renderer.render( scene, camera );
     }
 
-    //------------------------------------------------------Basics objects------------------------------------------------------
+    //------------------------------------------------------objects spawning----------------------------------------------------------------------
     /*
      * Add a new cube to the scene
      */
@@ -258,16 +269,8 @@
         var cube = new THREE.Mesh( geometry, material );
         cube.castShadow = true;
         cube.receiveShadow = true;
-        //Add object to arrays
-        objects[objects_count] = cube;
-        objects_types[objects_count] = myTypes.basic;
-        selected_object = objects_count;
-        objects_count++;
-        //Add to scene and control
-        scene.add( cube );
-        control.attach( cube );
-        showControlledObjectOptions();
-        render();
+        //Add object to arrays and scene
+        addNewObjectToProject(cube, myTypes.basic);
     }
 
     /*
@@ -282,16 +285,8 @@
         var plane = new THREE.Mesh( geometry, material );
         plane.castShadow = true;
         plane.receiveShadow = true;
-        //Add object to arrays
-        objects[objects_count] = plane;
-        objects_types[objects_count] = myTypes.basic;
-        selected_object = objects_count;
-        objects_count++;
-        //Add to scene and control
-        scene.add( plane );
-        control.attach( plane );
-        showControlledObjectOptions();
-        render();
+        //Add object to arrays and scene
+        addNewObjectToProject(plane, myTypes.basic);
     }
 
     /*
@@ -306,19 +301,11 @@
         var cylinder = new THREE.Mesh( geometry, material );
         cylinder.castShadow = true;
         cylinder.receiveShadow = true;
-        //Add object to arrays
-        objects[objects_count] = cylinder;
-        objects_types[objects_count] = myTypes.basic;
-        selected_object = objects_count;
-        objects_count++;;
-        //Add to scene and control
-        scene.add( cylinder );
-        control.attach( cylinder );
-        showControlledObjectOptions();
-        render();
+        //Add object to arrays and scene
+        addNewObjectToProject(cylinder, myTypes.basic);
     }
 
-    //------------------------------------------------------Text------------------------------------------------------
+    //------------------------------------------------------Text spawning----------------------------------------------------------------------
     /*
      * Add a new text mesh to the scene
      */
@@ -357,16 +344,8 @@
             var textMesh = new THREE.Mesh(geometry, materialArray );
 
             //geometry.computeBoundingBox();
-            //Add object to arrays
-            objects_types[objects_count] = myTypes.text;
-            objects[objects_count] = textMesh;
-            selected_object = objects_count;
-            objects_count++;;
-            //Add to scene and control
-            scene.add(textMesh);
-            control.attach( textMesh );
-            showControlledObjectOptions();
-            render();
+            //Add object to arrays and scene
+            addNewObjectToProject(textMesh, myTypes.text);
         } );
     }
 
@@ -374,8 +353,18 @@
      * Change selected font
      */
     function changeFont(){
-        fontName = $("#fonts").val();
-        refreshText(false, false);
+        switch (objects_types[selected_object]) {
+            case myTypes.text:
+                fontName = $("#fonts").val();
+                refreshText(false, false);
+                break;
+
+            case myTypes.banner:
+                var fname= $("#fonts").val().trim() + '_' + fontWeight;
+                objects_class[selected_object].changeTextFont(fname, scene);
+                render();
+                break;
+        }
     }
 
     /*
@@ -394,14 +383,32 @@
      * Change selected inner text color
      */
     function changeColorTextIn(){
-        refreshText(true, false);
+        switch (objects_types[selected_object]) {
+            case myTypes.text:
+                refreshText(true, false);
+                break;
+            case myTypes.banner:
+                objects_class[selected_object].changeTextColor(
+                    new THREE.Color().setHex("0x" + ($("#textColor").val()).replace("#", "")), true);
+                render();
+                break;
+        }
     }
 
     /*
      * Change selected outer text color
      */
     function changeColorTextOut(){
-        refreshText(false, true);
+        switch (objects_types[selected_object]) {
+            case myTypes.text:
+                refreshText(false, true);
+                break;
+            case myTypes.banner:
+                objects_class[selected_object].changeTextColor(
+                    new THREE.Color().setHex("0x" + ($("#textColorOut").val()).replace("#", "")), false);
+                render();
+                break;
+        }
     }
 
     /*
@@ -483,8 +490,30 @@
             return true;
         else return false;
     }
+    //------------------------------------------------------Premade objects spawning----------------------------------------------------------------------
+    /*
+     * Add a premade object to the scene (see classes)
+     */
+    function addPremadeObject(which){
+        switch (which) {
+            //Banner
+            case 1:
+                bootbox.prompt("Entrez le texte à afficher", function(text) {
+                    var banner = new Banner(text);
+                    banner.createBanner().then(
+                        function(group){
+                            //Add object to arrays
+                            addNewObjectToProject(group, myTypes.banner);
+                            objects_class[selected_object] = banner;
+                        }
+                    );
+                });
+            break;
+        }
+        render();
+    }
 
-    //------------------------------------------------------Controls------------------------------------------------------
+    //------------------------------------------------------Controls----------------------------------------------------------------------
     /*
      * Switch transform control to the next object and show options
      */
@@ -553,6 +582,12 @@
             case myTypes.importedObject:
                 $("#optionOpacity").show();
                 break;
+            case myTypes.banner:
+                $("#optionColor").show();
+                $("#optionOpacity").show();
+                $("#optionTextBanner").show();
+                $("#optionText").show();
+                break;
         }
     }
 
@@ -565,16 +600,21 @@
         $("#optionText").hide();
     }
 
-    //------------------------------------------------------Basic operations------------------------------------------------------
+    //------------------------------------------------------Basic operations----------------------------------------------------------------------
     /*
      * Change object's color
      */
     function changeColor(){
         var color = "0x" + ($("#objColor").val()).replace("#", "");
-        if (selected_object !== null) {
-            objects[selected_object].material.color.setHex(color);
-            render();
+        switch (objects_types[selected_object]) {
+            case myTypes.basic:
+                objects[selected_object].material.color.setHex(color);
+                break;
+            case myTypes.banner:
+                objects_class[selected_object].changePlaneColor(color);
+                break;
         }
+        render();
     }
 
     /*
@@ -600,7 +640,7 @@
         }
     }
 
-    //------------------------------------------------------Drag&Drop Handlers------------------------------------------------------
+    //------------------------------------------------------Drag&Drop Handlers----------------------------------------------------------------------
     /*
      * Drop files in object import zone
      */
@@ -688,16 +728,6 @@
         // Prevent default behavior (Prevent file from being opened)
         ev.preventDefault();
     }
-    /*function dragOverHandlerFont(ev) {
-        $("#dropTextFont").fadeOut(500);
-        // Prevent default behavior (Prevent file from being opened)
-        ev.preventDefault();
-    }
-    function dragOverHandlerTexture(ev){
-        $("#dropTextTexture").fadeOut(500);
-        // Prevent default behavior (Prevent file from being opened)
-        ev.preventDefault();
-    }*/
 
     /*
      * Drag leave zone
@@ -705,14 +735,8 @@
     function dragLeaveHandlerObject(){
         $("#dropZoneObject").css('background', 'white');
     }
-    /*function dragLeaveHandlerFont(){
-        $("#dropTextFont").fadeIn(500);
-    }
-    function dragLeaveHandlerTexture(){
-        $("#dropTextTexture").fadeIn(500);
-    }*/
 
-    //------------------------------------------------------Object load functions------------------------------------------------------
+    //------------------------------------------------------Object load functions----------------------------------------------------------------------
     /*
      * Load the uploaded FBX object to the scene
      */
@@ -729,19 +753,11 @@
                 }
             } );*/
             console.log("Loaded");
-            //Add object to arrays
-            objects_types[objects_count] = myTypes.importedObject;
-            objects[objects_count] = object;
-            selected_object = objects_count;
-            objects_count++;
-            //Add object to scene and control
-            scene.add( object );
-            control.attach(object);
+            //add object to scene and array
             object.scale.set(10, 10, 10,);
+            addNewObjectToProject(object, myTypes.importedObject);
             //Remove files when object is on scene
             removeTempFolder();
-            showControlledObjectOptions();
-            render();
         },
         function ( error ) {
             $("#dropZoneObject").popover('dispose');
@@ -766,19 +782,11 @@
                     }
                 } );
                 console.log("Loaded");
-                //Add object to arrays
-                objects_types[objects_count] = myTypes.importedObject;
-                objects[objects_count] = gltf.scene;
-                selected_object = objects_count;
-                objects_count++;
-                //Add object to scene and control
-                scene.add( gltf.scene );
-                control.attach(gltf.scene);
+                //add object to scene and array
                 gltf.scene.scale.set(10, 10, 10,);
+                addNewObjectToProject(gltf.scene, myTypes.importedObject);
                 //Remove files when object is on scene
                 removeTempFolder();
-                showControlledObjectOptions();
-                render();
             },
             // called while loading is progressing
             function ( xhr ) {
@@ -806,24 +814,33 @@
             objLoader.setMaterials(materials);
             objLoader.setPath(tempStorePath + lastUploadedObjectName.split(".")[0] + '/');
             objLoader.load(lastUploadedObjectName, function (object) {
-                //Add object to arrays
-                objects_types[objects_count] = myTypes.importedObject;
-                objects[objects_count] = object;
-                selected_object = objects_count;
-                objects_count++;
-                //Add object to scene and control
-                scene.add(object);
+                //add object to scene and array
                 object.scale.set(10, 10, 10,);
-                control.attach(object);
+                addNewObjectToProject(object, myTypes.importedObject);
                 //Remove files when object is on scene
                 removeTempFolder();
-                showControlledObjectOptions();
-                render();
             });
         });
     }
 
-    //------------------------------------------------------Utils functions-------------------------------------------------------
+    //------------------------------------------------------Utils functions-----------------------------------------------------------------------
+
+    /*
+     * Add a new object to the scene and to the objects array
+     * @param object : The mesh object to add to the scene and array
+     * @param type : The object's myTypes type
+     */
+    function addNewObjectToProject(object, type){
+        objects[objects_count] = object;
+        objects_types[objects_count] = type;
+        selected_object = objects_count;
+        objects_count++;
+        //Add to scene and control
+        scene.add( object );
+        control.attach( object );
+        showControlledObjectOptions();
+        render();
+    }
 
     /*
     * Upload the dropped files on the server in the temp folder
@@ -1001,7 +1018,7 @@
         showPopupForMilliSeconds("importWarningButton", text, 10000, true);
     }
 
-    //------------------------------------------------------Windows events------------------------------------------------------
+    //------------------------------------------------------Windows events----------------------------------------------------------------------
     /*
      * Windows quit event : remove imported fonts
      */
@@ -1018,9 +1035,9 @@
      */
     window.addEventListener( 'resize', onWindowResize, false );
     function onWindowResize() {
-        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.aspect = (window.innerWidth / 2) / (window.innerHeight - 20);
         camera.updateProjectionMatrix();
-        renderer.setSize( window.innerWidth, window.innerHeight );
+        renderer.setSize( (window.innerWidth / 2), (window.innerHeight - 20) );
         render();
     }
 
@@ -1030,5 +1047,8 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+<script src="js/bootbox.js"></script>
+<script src="js/bootbox.locales.js"></script>
+<script src="js/bootbox.all.js"></script>
 </body>
 </html>
