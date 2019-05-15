@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <title>Object selector</title>
+    <title>Objectselector Creator</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
     <!-- Bootstrap CSS -->
@@ -28,6 +28,7 @@
 <script src="js/GeometryUtils.js"></script>
 <script src="js/inflate.min.js"></script>
 <script src="js/MTLLoader.js"></script>
+<script src="js/GLTFExporter.js"></script>
 <script src="js/classes.js"></script>
 
 <nav class="navbar navbar-expand-lg navbar-light bg-light" id="navbar">
@@ -53,6 +54,11 @@
             <form class="form-inline" style="margin-left:20px;">
                 <button class="btn btn-sm btn-outline-secondary" type="button" onclick="toggleAdvancedControls();">
                     Montrer contrôles avancés
+                </button>
+            </form>
+            <form class="form-inline" style="margin-left: 20px;">
+                <button class="btn btn-success" type="button" onclick="exportSceneToGLB();">
+                    Valider objet
                 </button>
             </form>
         </ul>
@@ -119,8 +125,10 @@
 
     <div id="optionAnimation">
         <h5>Animer l'objet</h5>
-        <input type="checkbox" id="animRotate">
+        <input type="checkbox" id="animRotate" onchange="setAnim(1);">
         <label for="animRotate">Rotation</label>
+        <input type="checkbox" id="animFloat" onchange="setAnim(2);">
+        <label for="animFloat">Flottement</label>
     </div>
 
     <!-- <h5>Importer texture</h5>
@@ -142,19 +150,23 @@
 </div>
 
 <script>
+
     var camera, scene, renderer, control, orbit, light;
     //We keep track of all objects in the scene
     var objects = [];
-    //We keep track of the object's type : basic, text, object, banner, capsule, circulary, parade
-    var myTypes = Object.freeze({"basic":1, "text":2, "importedObject":3, "banner":4, "capsule":5, "circulary":6, "parade":7});
+    //We keep track of the object's type : basic, text, object, banner, ellipse, circulary, parade
+    var myTypes = Object.freeze({"basic":1, "text":2, "importedObject":3, "banner":4, "ellipse":5, "circulary":6, "parade":7});
     var objects_types = [], objects_class = [];
+    //Animation types of objects
+    var objects_anim = [];
     var objects_count = 0;
     var selected_object = null;
+
     var fontName = "helvetiker", fontWeight = "regular" ;
     var lastUploadedObjectName = null, lastUploadedTextureName = null;
     var areAdvancedControlsToggled = false;
 
-    var bner;
+    var objectName = 'obj.glb';
 
     const tempStorePath = '3dObjects/temp/';
     const prefabStorePath = '3dObjects/prefabs';
@@ -165,7 +177,8 @@
     const removeFontsURL = "removeFonts.php";
     const storeTextureURL = "storeTexture.php";
     const removeTextureURL = "removeTexture.php";
-
+    const storeObjectURL = "storeObject.php";
+;
     init();
     render();
 
@@ -252,7 +265,15 @@
      * Render function
      */
     function render() {
-        //requestAnimationFrame( render );
+        requestAnimationFrame( render );
+
+        for (var i = 0; i < objects_anim.length; i++){
+            switch (objects_anim[i]) {
+                case 1:
+                    objects[i].rotation.y += 0.01;
+                    break;
+            }
+        }
         renderer.render( scene, camera );
     }
 
@@ -509,8 +530,43 @@
                     );
                 });
             break;
+            //Ellipse
+            case 2:
+                bootbox.prompt("Entrez le texte à afficher", function(text) {
+                    var capsule = new Ellipse(text);
+                    capsule.createEllipse().then(
+                        function(group){
+                            //Add object to arrays
+                            addNewObjectToProject(group, myTypes.ellipse);
+                            objects_class[selected_object] = capsule;
+                        }
+                    );
+                });
+            break;
         }
         render();
+    }
+    //------------------------------------------------------Animation----------------------------------------------------------------------
+
+    function setAnim(which){
+        switch (which) {
+            case 1:
+                if (document.getElementById('animRotate').checked){
+                    objects_anim[selected_object] += 1;
+                }
+                else {
+                    objects_anim[selected_object] -= 1;
+                }
+            break;
+                if (document.getElementById('animFloat').checked){
+                    objects_anim[selected_object] += 2;
+                }
+                else {
+                    objects_anim[selected_object] -= 2;
+                }
+            case 2:
+            break;
+        }
     }
 
     //------------------------------------------------------Controls----------------------------------------------------------------------
@@ -577,7 +633,6 @@
                 break;
             case myTypes.text:
                 $("#optionText").show();
-                $("#optionOpacity").show();
                 break;
             case myTypes.importedObject:
                 $("#optionOpacity").show();
@@ -754,7 +809,6 @@
             } );*/
             console.log("Loaded");
             //add object to scene and array
-            object.scale.set(10, 10, 10,);
             addNewObjectToProject(object, myTypes.importedObject);
             //Remove files when object is on scene
             removeTempFolder();
@@ -775,6 +829,7 @@
         console.log("Path set");
         // Load a glTF resource
         loader.load( lastUploadedObjectName, function ( gltf ) {
+                var objs = [];
                 gltf.scene.traverse( function ( child ) {
                     if ( child.isMesh ) {
                         child.castShadow = true;
@@ -783,7 +838,6 @@
                 } );
                 console.log("Loaded");
                 //add object to scene and array
-                gltf.scene.scale.set(10, 10, 10,);
                 addNewObjectToProject(gltf.scene, myTypes.importedObject);
                 //Remove files when object is on scene
                 removeTempFolder();
@@ -815,7 +869,6 @@
             objLoader.setPath(tempStorePath + lastUploadedObjectName.split(".")[0] + '/');
             objLoader.load(lastUploadedObjectName, function (object) {
                 //add object to scene and array
-                object.scale.set(10, 10, 10,);
                 addNewObjectToProject(object, myTypes.importedObject);
                 //Remove files when object is on scene
                 removeTempFolder();
@@ -823,7 +876,69 @@
         });
     }
 
+    /*
+     * Export the builded object to GLB
+     */
+    function exportSceneToGLB(){
+        // Instantiate a exporter
+        var exporter = new THREE.GLTFExporter();
+        //Check if there is a scene object in the objects array
+        //getObjectsAsMeshes(objects);
+        getObjectsAsMeshes(objects ,true);
+
+        // Parse the input and generate the glTF output
+        exporter.parse( final, function ( gltf ) {
+            var file = new Blob( [ gltf ], { type: 'application/octet-stream' } );
+            console.log( gltf );
+            var fdata = new FormData();
+            fdata.append("files[]", file);
+            fetch(storeObjectURL, {
+                method: 'POST',
+                body: fdata,
+            }).then(response => {
+                if (response.ok) {
+                    bootbox.alert("Objet exporté vers le server.", function(){
+                        //Then redirect to map page
+                        window.location = "/map.html?param=" + objectName;
+                    });
+                }
+            });
+        }, {binary : true} );
+    }
     //------------------------------------------------------Utils functions-----------------------------------------------------------------------
+
+    /*
+    * Get all objects3D and meshes of the scene in an array
+    * @param array : the global objects array
+    */
+    var final = [];
+    function getObjectsAsMeshes(iterable, first) {
+        console.log(iterable);
+        if (first){
+            for (var node of iterable) {
+                if (node instanceof THREE.Object3D || node instanceof THREE.Scene
+                    || node instanceof THREE.Group || node instanceof THREE.Mesh) {
+                    if (/*node instanceof THREE.Object3D ||*/ node instanceof THREE.Scene || node instanceof THREE.Group)
+                        getObjectsAsMeshes(node, false);
+                    else {
+                        final.push(node);
+                    }
+                }
+            }
+        }
+        else
+            iterable.traverse(function (node) {
+                if (iterable !== node && (node instanceof THREE.Object3D || node instanceof THREE.Scene
+                    || node instanceof THREE.Group || node instanceof THREE.Mesh)) {
+                    if (/*node instanceof THREE.Object3D ||*/ node instanceof THREE.Scene|| node instanceof THREE.Group)
+                        getObjectsAsMeshes(node, false);
+                    else {
+                        final.push(node);
+                    }
+                }
+            });
+        console.log(final);
+    }
 
     /*
      * Add a new object to the scene and to the objects array
@@ -831,8 +946,12 @@
      * @param type : The object's myTypes type
      */
     function addNewObjectToProject(object, type){
+        //Set object in global object array
         objects[objects_count] = object;
+        //Set object type
         objects_types[objects_count] = type;
+        //Init object animation array
+        objects_anim[objects_count] = 0;
         selected_object = objects_count;
         objects_count++;
         //Add to scene and control
@@ -860,7 +979,7 @@
         if (format === "json"){
             var filename = files[0].getAsFile().name;
             //Download font to server
-            var fdata = new FormData();
+            fdata = new FormData();
             fdata.append("files[]", files[0].getAsFile());
             fetch(storeFontURL, {
                 method: 'POST',

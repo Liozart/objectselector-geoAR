@@ -125,11 +125,84 @@ class Banner {
 }
 
 /*
- * --------------------------------------------------------Capsule class--------------------------------------------------------------------
+ * --------------------------------------------------------Ellipse class--------------------------------------------------------------------
  */
 
-class Capsule {
-    constructor() {}
+class Ellipse {
+    constructor(text) {
+        this.color_cylinder = new THREE.Color();
+        this.color_cylinder.setHex("0x00ff00");
+
+        this.color_text_in = new THREE.Color();
+        this.color_text_in.setHex("0xff0000");
+
+        this.color_text_out = new THREE.Color();
+        this.color_text_out.setHex("0x0000ff");
+
+        this.ellipse_text = text;
+
+        this.mesh_ellipse = null;
+        this.mesh_text = null;
+        this.mesh_group = new THREE.Group();
+    }
+
+    /*
+    * Create and return a new ellipse
+    */
+    createEllipse(){
+        var self = this;
+        return new Promise(function(resolve, reject){
+            var curve = new THREE.EllipseCurve(
+                0,  0,            // ax, aY
+                200, 100,           // xRadius, yRadius
+                0,  2 * Math.PI,  // aStartAngle, aEndAngle
+                false,            // aClockwise
+                0                 // aRotation
+            );
+
+            var points = curve.getPoints( 50 );
+            var geometry = new THREE.BufferGeometry().setFromPoints( points );
+
+            var material = new THREE.LineBasicMaterial( { color : 0xff0000 } );
+
+            // Create the final object to add to the scene
+            self.mesh_ellipse = new THREE.Line( geometry, material );
+            self.mesh_ellipse.castShadow = true;
+            self.mesh_ellipse.receiveShadow = true;
+            resolve(self.mesh_ellipse);
+            //Create text
+            var materialFront = new THREE.MeshBasicMaterial( { color: self.color_text_in } );
+            var materialSide = new THREE.MeshBasicMaterial( { color: self.color_text_out } );
+            var materialArray = [ materialFront, materialSide ];
+            var loader = new THREE.FontLoader();
+            loader.load( "fonts/helvetiker_regular.typeface.json", function ( font ) {
+                var geometry = new THREE.TextGeometry( self.ellipse_text, {
+                    font: font,
+                    size: 80,
+                    height: 5,
+                    curveSegments: 12,
+                    bevelEnabled: true,
+                    bevelThickness: 8,
+                    bevelSize: 6,
+                    bevelOffset: 0,
+                    bevelSegments: 5
+                });
+                self.mesh_text = new THREE.Mesh(geometry, materialArray);
+                self.mesh_text.castShadow = true;
+                self.mesh_text.receiveShadow = true;
+                var box = new THREE.Box3().setFromObject( self.mesh_text ).getSize();
+
+                //Merge the two objects
+                self.mesh_group.add( self.mesh_cylinder );
+                self.mesh_group.add( self.mesh_text );
+                //Center the text
+                self.mesh_cylinder.position.set((box.x / 2), (box.y / 3), -20.0);
+                self.mesh_group.position.set(-(box.x / 2), 100, 0);
+                //return the group
+                resolve(self.mesh_group);
+            });
+        });
+    }
 
 }
 

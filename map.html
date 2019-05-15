@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <title>Objectselector Map</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <!-- MapBox scripts -->
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.54.0/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.54.0/mapbox-gl.css' rel='stylesheet' />
+    <style>
+        body { margin:0; padding:0; }
+        #map { position:absolute; top:0; bottom:0; right: 0; width:80%; height: 95%; margin: 5px; }
+        #zone { width: 18%; margin: 1%; border: 1px grey solid; border-radius: 5px; padding: 5px; }
+        #btn { margin-top: 10px; left: 2%; }
+    </style>
+</head>
+<body>
+<!-- Geocoder scripts -->
+<script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.2.0/mapbox-gl-geocoder.min.js'></script>
+<link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.2.0/mapbox-gl-geocoder.css' type='text/css' />
+<div  id="zone">
+    Sélectionnez l'emplacement de l'objet sur la carte : Cliquez pour placer le marqueur là où vous souhaitez que l'object apparaîsse.
+    <button type="button" id="btn" class="btn btn-success" onclick="validPos();">Valider emplacement</button>
+</div>
+<div id='map'></div>
+<script>
+    var pos = null;
+    var marker = null;
+    //Create map
+    mapboxgl.accessToken = 'pk.eyJ1IjoibGlvemFydCIsImEiOiJjajl5NXJvbWI0dWhtMnBtdmJxeWlkNzBzIn0.gJ4P4FFmThRRNk-SsG6oIQ';
+    var map = new mapboxgl.Map({
+        container: 'map', // container id
+        style: 'mapbox://styles/mapbox/streets-v11', // stylesheet location
+        center: [6.1456900, 46.2022200], // starting position [lng, lat]
+        zoom: 12 // starting zoom
+    });
+
+    //Add marker on click event
+    map.on('click', function (e) {
+        //Remove old marker
+        if (marker !== null)
+            marker.remove();
+        marker = new mapboxgl.Marker({})
+            .setLngLat(e.lngLat)
+            .addTo(map);
+        pos = e.lngLat;
+    });
+
+    function validPos(){
+        console.log(pos);
+    }
+
+    //Search bar
+    map.addControl(new MapboxGeocoder({
+        accessToken: mapboxgl.accessToken,
+        zoom: 14,
+        placeholder: "Rechercher adresse",
+        mapboxgl: mapboxgl
+    }));
+</script>
+</body>
+</html>

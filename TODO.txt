@@ -17,6 +17,7 @@ rapport :
 - recherche des technolgies
 --- objectselector ---
 - structure du projet
+1ère partie :
 - technologies utilisées
     - three.js
     - php
@@ -27,3 +28,8 @@ rapport :
     - ajout texte
     - importations
 - implémentation
+
+2ème partie :
+- technologies utilisées
+    - pas google map API
+    - mapbox
