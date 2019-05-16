@@ -45,7 +45,7 @@
                 </a>
                 <div class="dropdown-menu" aria-labelledby="navbarDropdown">
                     <a class="dropdown-item" href="#" id="addPrefabBanner" onclick="addPremadeObject(1);">Bannière</a>
-                    <a class="dropdown-item" href="#" onclick="addPremadeObject(2);">Capsule</a>
+                    <a class="dropdown-item" href="#" onclick="addPremadeObject(2);">Logo</a>
                     <a class="dropdown-item" href="#" onclick="addPremadeObject(3);">Texte défilant</a>
                     <a class="dropdown-item" href="#" onclick="addPremadeObject(4);">Texte circulaire</a>
                     <div class="dropdown-divider"></div>
@@ -114,21 +114,19 @@
                    value="#0000ff" onchange="changeColorTextOut();">
             <label for="textColorOut">Couleur contours</label>
         </div>
-
         <div id="optionOpacity">
             <h5>Modifier transparence</h5>
             0<input type="range" id="objOpacity" min="0" max="1" step="0.0001"
                     value="#00ff00" oninput="changeOpacity();">1
             <label for="objOpacity">Opacité</label>
         </div>
-    </div>
-
-    <div id="optionAnimation">
-        <h5>Animer l'objet</h5>
-        <input type="checkbox" id="animRotate" onchange="setAnim(1);">
-        <label for="animRotate">Rotation</label>
-        <input type="checkbox" id="animFloat" onchange="setAnim(2);">
-        <label for="animFloat">Flottement</label>
+        <div id="optionAnimation">
+            <h5>Animer l'objet</h5>
+            <input type="checkbox" id="animRotate" onchange="setAnim(1);">
+            <label for="animRotate">Rotation</label>
+            <input type="checkbox" id="animFloat" onchange="setAnim(2);">
+            <label for="animFloat">Flottement</label>
+        </div>
     </div>
 
     <!-- <h5>Importer texture</h5>
@@ -148,9 +146,7 @@
         <button onclick="addText();">Ajouter</button><br/>
     </div>
 </div>
-
 <script>
-
     var camera, scene, renderer, control, orbit, light;
     //We keep track of all objects in the scene
     var objects = [];
@@ -265,15 +261,15 @@
      * Render function
      */
     function render() {
-        requestAnimationFrame( render );
+        //requestAnimationFrame( render );
 
-        for (var i = 0; i < objects_anim.length; i++){
+        /*for (var i = 0; i < objects_anim.length; i++){
             switch (objects_anim[i]) {
                 case 1:
                     objects[i].rotation.y += 0.01;
                     break;
             }
-        }
+        }*/
         renderer.render( scene, camera );
     }
 
@@ -316,7 +312,7 @@
     function addCylinder(){
         var color = new THREE.Color();
         color.setHex("0x" + ($("#objColor").val()).replace("#", ""));
-        var geometry = new THREE.CylinderGeometry(100, 100, 100);
+        var geometry = new THREE.CylinderGeometry(100, 100, 100, 100);
         var material = new THREE.MeshLambertMaterial( { color: color,
             transparent: true, opacity: 1.0} );
         var cylinder = new THREE.Mesh( geometry, material );
@@ -515,6 +511,7 @@
     /*
      * Add a premade object to the scene (see classes)
      */
+    var dialog;
     function addPremadeObject(which){
         switch (which) {
             //Banner
@@ -532,19 +529,40 @@
             break;
             //Ellipse
             case 2:
-                bootbox.prompt("Entrez le texte à afficher", function(text) {
-                    var capsule = new Ellipse(text);
-                    capsule.createEllipse().then(
-                        function(group){
-                            //Add object to arrays
-                            addNewObjectToProject(group, myTypes.ellipse);
-                            objects_class[selected_object] = capsule;
-                        }
-                    );
+                dialog = bootbox.dialog({
+                    message: 'Entrez l\'image à afficher : <br/><input type="file" onchange="setEllipseTexture(dialog);" id="ellipseFile">',
+                    closeButton: true
                 });
             break;
         }
         render();
+    }
+
+    /*
+     * Called when the ellipse texture dialog file is set
+     * @param the dialog containing the infos
+     */
+    function setEllipseTexture(dialog) {
+        dialog.modal('hide');
+        var file = document.getElementById('ellipseFile').files[0];
+        console.log(file.name);
+        var fdata = new FormData();
+        fdata.append("files[]", file);
+        fetch(storeTextureURL, {
+            method: 'POST',
+            body: fdata,
+        }).then(response => {
+            if (response.ok) {
+                var ellipse = new Ellipse(file.name);
+                ellipse.createEllipse().then(
+                    function(mesh){
+                        //Add object to arrays
+                        addNewObjectToProject(mesh, myTypes.ellipse);
+                        objects_class[selected_object] = ellipse;
+                    }
+                );
+            }
+        });
     }
     //------------------------------------------------------Animation----------------------------------------------------------------------
 
@@ -644,6 +662,7 @@
                 $("#optionText").show();
                 break;
         }
+        $("#optionAnimation").show();
     }
 
     /*
@@ -653,6 +672,7 @@
         $("#optionColor").hide();
         $("#optionOpacity").hide();
         $("#optionText").hide();
+        $("#optionAnimation").hide();
     }
 
     //------------------------------------------------------Basic operations----------------------------------------------------------------------
